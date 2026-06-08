@@ -166,6 +166,24 @@
         #pwa-banner { display:none; position:fixed; top:0; left:0; width:100%; background:var(--navy); color:white; padding:10px 16px; z-index:300; font-size:13px; align-items:center; justify-content:space-between; gap:8px; }
         #pwa-banner button { background:var(--gold); color:var(--navy); border:none; border-radius:6px; padding:6px 12px; font-weight:700; font-family:'Sarabun',sans-serif; cursor:pointer; font-size:12px; }
         #pwa-banner .pwa-close { background:none; border:none; color:rgba(255,255,255,0.6); font-size:16px; cursor:pointer; padding:0 4px; }
+
+        /* ===== Dept/Loc Manager ===== */
+        .mgr-item { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; transition:box-shadow 0.15s; }
+        .mgr-item.dragging { opacity:0.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); }
+        .mgr-item.drag-over { border-color:var(--navy); border-style:dashed; }
+        .mgr-item.archived { opacity:0.45; }
+        .mgr-drag { cursor:grab; color:var(--text-light); font-size:16px; flex-shrink:0; touch-action:none; }
+        .mgr-drag:active { cursor:grabbing; }
+        .mgr-name { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+        .mgr-name-input { flex:1; font-size:13px; font-weight:600; color:var(--text); border:1px solid var(--navy); border-radius:6px; padding:4px 8px; background:var(--bg); outline:none; }
+        .mgr-order { font-size:10px; color:var(--text-light); background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:1px 6px; flex-shrink:0; }
+        .mgr-actions { display:flex; gap:4px; flex-shrink:0; }
+        .mgr-btn { border:none; border-radius:6px; padding:6px 8px; font-size:12px; cursor:pointer; font-family:'Sarabun',sans-serif; transition:0.15s; }
+        .mgr-btn.edit { background:var(--info); color:var(--info-text); }
+        .mgr-btn.save { background:var(--success); color:var(--success-text); }
+        .mgr-btn.del  { background:var(--danger); color:var(--danger-text); }
+        .mgr-btn.restore { background:var(--warn); color:var(--warn-text); }
+        .mgr-empty { text-align:center; color:var(--text-light); font-size:13px; padding:20px; }
     </style>
 </head>
 <body>
@@ -211,15 +229,7 @@
         <div class="card" id="registerCard" style="display:none;">
             <div class="card-title" style="color:#166534;"><i class="fa-solid fa-user-shield"></i> ลงทะเบียนผู้ปฏิบัติงาน</div>
             <input type="text" id="regName" class="form-control" placeholder="ยศชื่อ (พิมพ์ติดกัน ไม่ต้องใส่นามสกุล)">
-            <select id="regDept" class="form-control">
-                <option value="" disabled selected>-- เลือกสังกัด/แผนกงาน --</option>
-                <option value="ศูนย์แอดมินส่วนกลาง">ศูนย์บัญชาการ (ส่วนกลาง)</option>
-                <option value="ไม่มีสังกัด (หน้าห้อง)">หน้าห้อง ผบก. / ผกก.</option>
-                <option value="ธกส.ฝอ.ฯ">ธกส.ฝอ.ฯ</option><option value="ขว.ฝอ.ฯ">ขว.ฝอ.ฯ</option>
-                <option value="ผงป.ฝอ.ฯ">ผงป.ฝอ.ฯ</option><option value="กบ.ฝอ.ฯ">กบ.ฝอ.ฯ</option>
-                <option value="กร.ฝอ.ฯ">กร.ฝอ.ฯ</option><option value="กง.ฝอ.ฯ">กง.ฝอ.ฯ</option>
-                <option value="จอส.ฝอฯ">จอส.ฝอฯ</option><option value="ร้อย สสน.ฝอ.ฯ">ร้อย สสน.ฝอ.ฯ</option>
-            </select>
+            <select id="regDept" class="form-control"><option value="" disabled selected>-- เลือกสังกัด/แผนกงาน --</option></select>
             <div style="font-size:11px;color:#dc2626;text-align:center;margin-bottom:10px;">* เมื่อลงทะเบียนแล้ว สิทธิ์จะตั้งค่าเป็น "รออนุมัติ"<br>กรุณาแจ้ง Admin ให้ปลดล็อกสิทธิ์ให้ท่าน</div>
             <button id="btnRegister" class="btn-action" style="background:#166534;" onclick="submitRegistration()">ส่งข้อมูลลงทะเบียน</button>
             <div class="auth-switch" onclick="toggleAuthForm()"><i class="fa-solid fa-arrow-left"></i> กลับไปหน้าล็อกอิน</div>
@@ -253,7 +263,7 @@
             <input type="text" id="ownerAssign" class="form-control" placeholder="พิมพ์หรือเลือกชื่อเจ้าของเรื่อง..." list="userList">
             <div style="display:flex;gap:10px;">
                 <div style="flex:1;"><div style="font-size:12px;font-weight:600;margin-bottom:5px;">ความเร่งด่วน:</div><select id="urgencyAssign" class="form-control"><option value="ปกติ">🟢 ปกติ</option><option value="ด่วน">🟡 ด่วน</option><option value="ด่วนมาก">🟠 ด่วนมาก</option><option value="ด่วนที่สุด">🔴 ด่วนที่สุด</option></select></div>
-                <div style="flex:1;"><div style="font-size:12px;font-weight:600;margin-bottom:5px;">พิกัด:</div><select id="locAssign" class="form-control"><option value="โต๊ะธุรการ">📍 โต๊ะธุรการ</option><option value="หน้าห้อง ผกก.">📍 หน้าห้อง ผกก.</option><option value="หน้าห้อง ผบก.">📍 หน้าห้อง ผบก.</option></select></div>
+                <div style="flex:1;"><div style="font-size:12px;font-weight:600;margin-bottom:5px;">พิกัด:</div><select id="locAssign" class="form-control"></select></div>
             </div>
             <hr class="divider">
             <div class="input-group">
@@ -283,11 +293,7 @@
                 <input type="file" id="correctionImage" accept="image/jpeg,image/png" capture="environment" class="form-control" style="margin-bottom:0;">
                 <div id="imgPreview" style="margin-top:8px;display:none;"><img id="imgPreviewImg" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;"></div>
             </div>
-            <select id="locScan" class="form-control" style="margin-top:10px;">
-                <option value="โต๊ะธุรการ">📍 โต๊ะธุรการ</option>
-                <option value="หน้าห้อง ผกก.">📍 หน้าห้อง ผกก.</option>
-                <option value="หน้าห้อง ผบก.">📍 หน้าห้อง ผบก.</option>
-            </select>
+            <select id="locScan" class="form-control" style="margin-top:10px;"></select>
             <div class="input-group">
                 <input type="text" id="manualIdScan" class="form-control" placeholder="ระบุเลขแฟ้ม" style="text-transform:uppercase;">
                 <button class="btn-action" style="width:auto;padding:14px 16px;margin-top:0;" onclick="manualScan()">อัปเดต</button>
@@ -349,12 +355,49 @@
     </div>
 </div>
 
+    <!-- DEPT & LOCATION MANAGER TAB (Admin only) -->
+    <div id="tab-deptmgr" class="tab-content">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-building-user"></i> จัดการแผนกงาน</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="newDeptName" class="form-control" placeholder="ชื่อแผนกใหม่..." style="margin-bottom:0;">
+                <button class="btn-action" style="width:auto;padding:12px 16px;margin-top:0;" onclick="addDept()">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
+                <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ &nbsp;·&nbsp; กดไอคอนแก้ไขหรือลบ
+            </div>
+            <div id="deptList" style="min-height:40px;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-location-dot"></i> จัดการพิกัดตำแหน่ง</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="newLocName" class="form-control" placeholder="ชื่อพิกัดใหม่..." style="margin-bottom:0;">
+                <button class="btn-action" style="width:auto;padding:12px 16px;margin-top:0;" onclick="addLoc()">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
+                <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ
+            </div>
+            <div id="locList" style="min-height:40px;"></div>
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:var(--text-light);padding:8px 0 4px;">
+            การเปลี่ยนแปลงมีผลทันทีกับ dropdown ทุกหน้า
+        </div>
+    </div>
+
+
 <!-- Bottom Nav -->
 <div class="bottom-nav" id="mainNav">
     <div class="nav-item active" onclick="switchTab('tab-search',this)"><i class="fa-solid fa-chart-pie"></i><span>แดชบอร์ด</span></div>
     <div class="nav-item" onclick="switchTab('tab-assign',this)"><i class="fa-solid fa-folder-plus"></i><span>ผูกเรื่อง</span></div>
     <div class="nav-item" onclick="switchTab('tab-scan',this)"><i class="fa-solid fa-bolt"></i><span>อัปเดต</span></div>
     <div class="nav-item" onclick="switchTab('tab-analytics',this)"><i class="fa-solid fa-chart-bar"></i><span>สถิติ</span></div>
+    <div class="nav-item" id="nav-deptmgr" onclick="switchTab('tab-deptmgr',this)" style="display:none;"><i class="fa-solid fa-building-user"></i><span>แผนก</span></div>
     <div class="nav-item" id="nav-profile" onclick="switchTab('tab-profile',this)"><i class="fa-solid fa-user-lock"></i><span>โปรไฟล์</span></div>
 </div>
 
@@ -554,7 +597,10 @@ window.onload = function() {
         if (role === "Admin") {
             document.getElementById("adminPanel").style.display = "block";
             document.getElementById("nav-profile").innerHTML = '<i class="fa-solid fa-crown"></i><span>แอดมิน</span>';
+            document.getElementById("nav-deptmgr").style.display = "";
         }
+        loadRemoteConfig(token);
+        populateAllDropdowns();
         fetchSafePOST({ action: "get_user_names", token }).then(names => {
             if (Array.isArray(names)) {
                 const dl = document.getElementById("userList"); dl.innerHTML = "";
@@ -603,6 +649,8 @@ function switchTab(id, el) {
         return showToast("⚠️ หน้าผูกเรื่องจำกัดเฉพาะ [ธุรการ / Admin]", "warn");
     if (id === "tab-scan" && role !== "หน้าห้อง" && role !== "ธุรการ" && role !== "Admin" && role !== "เจ้าของเรื่อง")
         return showToast("⚠️ การอัปเดตจำกัดเฉพาะเจ้าหน้าที่ปฏิบัติงาน", "warn");
+    if (id === "tab-deptmgr" && role !== "Admin")
+        return showToast("⚠️ หน้าจัดการแผนกจำกัดเฉพาะ Admin", "warn");
     document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     document.getElementById(id).classList.add("active");
@@ -612,6 +660,7 @@ function switchTab(id, el) {
     if (id === "tab-analytics") loadAnalytics();
     if (id === "tab-assign") initScannerAssign();
     if (id === "tab-scan") initScannerScan();
+    if (id === "tab-deptmgr") { renderDeptList(); renderLocList(); }
 }
 
 // ========================================================
@@ -1076,6 +1125,352 @@ document.getElementById("pwa-install-btn").addEventListener("click", () => {
         deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById("pwa-banner").style.display = "none"; });
     }
 });
+
+// ========================================================
+// DEPT & LOCATION MANAGER
+// ========================================================
+
+// Default data — ใช้เมื่อ GAS ยังไม่มี action getConfig หรือ server ตอบว่าไม่มีข้อมูล
+const DEFAULT_DEPTS = [
+    "ศูนย์แอดมินส่วนกลาง","ไม่มีสังกัด (หน้าห้อง)",
+    "ธกส.ฝอ.ฯ","ขว.ฝอ.ฯ","ผงป.ฝอ.ฯ","กบ.ฝอ.ฯ",
+    "กร.ฝอ.ฯ","กง.ฝอ.ฯ","จอส.ฝอฯ","ร้อย สสน.ฝอ.ฯ"
+];
+const DEFAULT_LOCS = ["โต๊ะธุรการ","หน้าห้อง ผกก.","หน้าห้อง ผบก."];
+
+// State (โหลดจาก localStorage เป็น cache, sync กับ GAS เมื่อมีการเปลี่ยนแปลง)
+function getDeptState() {
+    try {
+        const raw = localStorage.getItem("bpp_depts");
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return DEFAULT_DEPTS.map((name,i) => ({ id: "d"+(i+1), name, archived: false, order: i }));
+}
+function getLocState() {
+    try {
+        const raw = localStorage.getItem("bpp_locs");
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return DEFAULT_LOCS.map((name,i) => ({ id: "l"+(i+1), name, archived: false, order: i }));
+}
+function saveDeptState(depts) {
+    localStorage.setItem("bpp_depts", JSON.stringify(depts));
+    populateAllDropdowns();
+}
+function saveLocState(locs) {
+    localStorage.setItem("bpp_locs", JSON.stringify(locs));
+    populateAllDropdowns();
+}
+
+// Persist to GAS (non-blocking — fire and forget, UI already updated)
+function persistConfig() {
+    const token = getToken(); if (!token) return;
+    fetchSafePOST({
+        action: "saveConfig",
+        token,
+        depts: getDeptState(),
+        locs:  getLocState()
+    }).catch(() => {}); // ไม่ block UI ถ้า GAS ช้า
+}
+
+// Load config จาก GAS เมื่อ login
+function loadRemoteConfig(token) {
+    fetchSafePOST({ action: "getFullConfig", token })
+        .then(d => {
+            if (d.depts && Array.isArray(d.depts) && d.depts.length > 0) {
+                localStorage.setItem("bpp_depts", JSON.stringify(d.depts));
+            }
+            if (d.locs && Array.isArray(d.locs) && d.locs.length > 0) {
+                localStorage.setItem("bpp_locs", JSON.stringify(d.locs));
+            }
+            populateAllDropdowns();
+        }).catch(() => { populateAllDropdowns(); }); // fallback to local cache
+}
+
+// ============================================================
+// POPULATE DROPDOWNS ทุกจุดในแอป
+// ============================================================
+function populateAllDropdowns() {
+    const depts = getDeptState().filter(d => !d.archived).sort((a,b) => a.order - b.order);
+    const locs  = getLocState().filter(l => !l.archived).sort((a,b) => a.order - b.order);
+
+    // regDept
+    const rd = document.getElementById("regDept");
+    if (rd) {
+        const prev = rd.value;
+        rd.innerHTML = '<option value="" disabled selected>-- เลือกสังกัด/แผนกงาน --</option>';
+        depts.forEach(d => {
+            const o = new Option(d.name, d.name);
+            rd.appendChild(o);
+        });
+        if (prev) rd.value = prev;
+    }
+
+    // ownerAssign datalist — no change needed (uses userList)
+
+    // locAssign
+    const la = document.getElementById("locAssign");
+    if (la) {
+        const prev = la.value;
+        la.innerHTML = "";
+        locs.forEach(l => la.appendChild(new Option("📍 "+l.name, l.name)));
+        if (prev && [...la.options].some(o => o.value === prev)) la.value = prev;
+    }
+
+    // locScan
+    const ls = document.getElementById("locScan");
+    if (ls) {
+        const prev = ls.value;
+        ls.innerHTML = "";
+        locs.forEach(l => ls.appendChild(new Option("📍 "+l.name, l.name)));
+        if (prev && [...ls.options].some(o => o.value === prev)) ls.value = prev;
+    }
+}
+
+// ============================================================
+// RENDER DEPT LIST (drag-and-drop)
+// ============================================================
+let dragSrcDept = null, dragSrcLoc = null;
+
+function renderDeptList() {
+    const depts = getDeptState().sort((a,b) => a.order - b.order);
+    const el = document.getElementById("deptList");
+    if (!el) return;
+    if (depts.length === 0) { el.innerHTML = '<div class="mgr-empty">ยังไม่มีแผนกงาน</div>'; return; }
+
+    el.innerHTML = depts.map((d,i) => `
+        <div class="mgr-item${d.archived?" archived":""}"
+             draggable="${!d.archived}"
+             data-id="${d.id}"
+             ondragstart="onDragStart(event,'dept')"
+             ondragover="onDragOver(event)"
+             ondrop="onDrop(event,'dept')"
+             ondragend="onDragEnd(event)">
+            <span class="mgr-drag" title="ลากเพื่อเรียง"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="mgr-order">${i+1}</span>
+            <span class="mgr-name" id="dname-${d.id}">${escapeHtml(d.name)}</span>
+            <input class="mgr-name-input" id="dinput-${d.id}" value="${escapeHtml(d.name)}" style="display:none;"
+                   onkeydown="if(event.key==='Enter')saveDeptName('${d.id}')">
+            <div class="mgr-actions">
+                ${d.archived
+                    ? `<button class="mgr-btn restore" onclick="restoreDept('${d.id}')"><i class="fa-solid fa-rotate-left"></i> คืนค่า</button>`
+                    : `<button class="mgr-btn edit" id="dedit-${d.id}" onclick="editDept('${d.id}')"><i class="fa-solid fa-pen"></i></button>
+                       <button class="mgr-btn del"  onclick="archiveDept('${d.id}')"><i class="fa-solid fa-trash"></i></button>`
+                }
+            </div>
+        </div>`).join("");
+}
+
+function renderLocList() {
+    const locs = getLocState().sort((a,b) => a.order - b.order);
+    const el = document.getElementById("locList");
+    if (!el) return;
+    if (locs.length === 0) { el.innerHTML = '<div class="mgr-empty">ยังไม่มีพิกัด</div>'; return; }
+
+    el.innerHTML = locs.map((l,i) => `
+        <div class="mgr-item${l.archived?" archived":""}"
+             draggable="${!l.archived}"
+             data-id="${l.id}"
+             ondragstart="onDragStart(event,'loc')"
+             ondragover="onDragOver(event)"
+             ondrop="onDrop(event,'loc')"
+             ondragend="onDragEnd(event)">
+            <span class="mgr-drag" title="ลากเพื่อเรียง"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="mgr-order">${i+1}</span>
+            <span class="mgr-name" id="lname-${l.id}">📍 ${escapeHtml(l.name)}</span>
+            <input class="mgr-name-input" id="linput-${l.id}" value="${escapeHtml(l.name)}" style="display:none;"
+                   onkeydown="if(event.key==='Enter')saveLocName('${l.id}')">
+            <div class="mgr-actions">
+                ${l.archived
+                    ? `<button class="mgr-btn restore" onclick="restoreLoc('${l.id}')"><i class="fa-solid fa-rotate-left"></i> คืนค่า</button>`
+                    : `<button class="mgr-btn edit" id="ledit-${l.id}" onclick="editLoc('${l.id}')"><i class="fa-solid fa-pen"></i></button>
+                       <button class="mgr-btn del" onclick="archiveLoc('${l.id}')"><i class="fa-solid fa-trash"></i></button>`
+                }
+            </div>
+        </div>`).join("");
+}
+
+// ============================================================
+// DEPT CRUD
+// ============================================================
+function addDept() {
+    const inp = document.getElementById("newDeptName");
+    const name = inp.value.trim();
+    if (!name) return showToast("กรุณาพิมพ์ชื่อแผนก", "warn");
+    const depts = getDeptState();
+    if (depts.some(d => d.name === name && !d.archived))
+        return showToast("มีแผนกชื่อนี้อยู่แล้ว", "warn");
+    const newId = "d" + Date.now();
+    depts.push({ id: newId, name, archived: false, order: depts.length });
+    saveDeptState(depts);
+    persistConfig();
+    inp.value = "";
+    renderDeptList();
+    showToast("เพิ่มแผนก \""+name+"\" สำเร็จ", "success");
+}
+
+function editDept(id) {
+    document.getElementById("dname-"+id).style.display = "none";
+    const inp = document.getElementById("dinput-"+id);
+    inp.style.display = "inline-block";
+    inp.focus(); inp.select();
+    document.getElementById("dedit-"+id).innerHTML = '<i class="fa-solid fa-check"></i>';
+    document.getElementById("dedit-"+id).className = "mgr-btn save";
+    document.getElementById("dedit-"+id).setAttribute("onclick", `saveDeptName('${id}')`);
+}
+
+function saveDeptName(id) {
+    const inp = document.getElementById("dinput-"+id);
+    const newName = inp.value.trim();
+    if (!newName) return showToast("ชื่อแผนกต้องไม่ว่าง", "warn");
+    const depts = getDeptState();
+    const idx = depts.findIndex(d => d.id === id);
+    if (idx < 0) return;
+    depts[idx].name = newName;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast("แก้ไขชื่อสำเร็จ", "success");
+}
+
+function archiveDept(id) {
+    const depts = getDeptState();
+    const d = depts.find(x => x.id === id);
+    if (!d) return;
+    if (!confirm(`ลบแผนก "${d.name}"?\n(แผนกจะถูกซ่อนแต่ยังเก็บข้อมูลไว้ สามารถคืนค่าได้)`)) return;
+    d.archived = true;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast(`ซ่อนแผนก "${d.name}" แล้ว`, "info");
+}
+
+function restoreDept(id) {
+    const depts = getDeptState();
+    const d = depts.find(x => x.id === id);
+    if (!d) return;
+    d.archived = false;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast(`คืนค่าแผนก "${d.name}" แล้ว`, "success");
+}
+
+// ============================================================
+// LOCATION CRUD
+// ============================================================
+function addLoc() {
+    const inp = document.getElementById("newLocName");
+    const name = inp.value.trim();
+    if (!name) return showToast("กรุณาพิมพ์ชื่อพิกัด", "warn");
+    const locs = getLocState();
+    if (locs.some(l => l.name === name && !l.archived))
+        return showToast("มีพิกัดชื่อนี้อยู่แล้ว", "warn");
+    const newId = "l" + Date.now();
+    locs.push({ id: newId, name, archived: false, order: locs.length });
+    saveLocState(locs);
+    persistConfig();
+    inp.value = "";
+    renderLocList();
+    showToast("เพิ่มพิกัด \""+name+"\" สำเร็จ", "success");
+}
+
+function editLoc(id) {
+    document.getElementById("lname-"+id).style.display = "none";
+    const inp = document.getElementById("linput-"+id);
+    inp.style.display = "inline-block";
+    inp.focus(); inp.select();
+    document.getElementById("ledit-"+id).innerHTML = '<i class="fa-solid fa-check"></i>';
+    document.getElementById("ledit-"+id).className = "mgr-btn save";
+    document.getElementById("ledit-"+id).setAttribute("onclick", `saveLocName('${id}')`);
+}
+
+function saveLocName(id) {
+    const inp = document.getElementById("linput-"+id);
+    const newName = inp.value.trim();
+    if (!newName) return showToast("ชื่อพิกัดต้องไม่ว่าง", "warn");
+    const locs = getLocState();
+    const idx = locs.findIndex(l => l.id === id);
+    if (idx < 0) return;
+    locs[idx].name = newName;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast("แก้ไขชื่อสำเร็จ", "success");
+}
+
+function archiveLoc(id) {
+    const locs = getLocState();
+    const l = locs.find(x => x.id === id);
+    if (!l) return;
+    if (!confirm(`ลบพิกัด "${l.name}"?`)) return;
+    l.archived = true;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast(`ซ่อนพิกัด "${l.name}" แล้ว`, "info");
+}
+
+function restoreLoc(id) {
+    const locs = getLocState();
+    const l = locs.find(x => x.id === id);
+    if (!l) return;
+    l.archived = false;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast(`คืนค่าพิกัด "${l.name}" แล้ว`, "success");
+}
+
+// ============================================================
+// DRAG AND DROP (HTML5 native)
+// ============================================================
+function onDragStart(e, type) {
+    if (type === "dept") dragSrcDept = e.currentTarget.getAttribute("data-id");
+    else                 dragSrcLoc  = e.currentTarget.getAttribute("data-id");
+    e.currentTarget.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", e.currentTarget.getAttribute("data-id"));
+}
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    e.currentTarget.classList.add("drag-over");
+}
+function onDragEnd(e) {
+    document.querySelectorAll(".mgr-item").forEach(el => {
+        el.classList.remove("dragging","drag-over");
+    });
+    dragSrcDept = null; dragSrcLoc = null;
+}
+function onDrop(e, type) {
+    e.preventDefault();
+    e.currentTarget.classList.remove("drag-over");
+    const targetId = e.currentTarget.getAttribute("data-id");
+    if (type === "dept") {
+        if (!dragSrcDept || dragSrcDept === targetId) return;
+        reorderItems(getDeptState, saveDeptState, renderDeptList, dragSrcDept, targetId);
+    } else {
+        if (!dragSrcLoc || dragSrcLoc === targetId) return;
+        reorderItems(getLocState, saveLocState, renderLocList, dragSrcLoc, targetId);
+    }
+    persistConfig();
+}
+
+function reorderItems(getState, saveState, renderFn, srcId, tgtId) {
+    const items = getState().sort((a,b) => a.order - b.order);
+    const srcIdx = items.findIndex(x => x.id === srcId);
+    const tgtIdx = items.findIndex(x => x.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+    const [moved] = items.splice(srcIdx, 1);
+    items.splice(tgtIdx, 0, moved);
+    items.forEach((x, i) => x.order = i);
+    saveState(items);
+    renderFn();
+    showToast("บันทึกลำดับแล้ว", "success");
+}
+
+
 </script>
 </body>
 </html>
