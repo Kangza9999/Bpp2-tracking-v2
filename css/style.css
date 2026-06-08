@@ -1,0 +1,33 @@
+/**
+ * ระบบติดตามแฟ้ม บก.ตชด.ภาค 2
+ * style.css v2.0 — Consolidated (ไม่ซ้ำกับ index.html แล้ว)
+ *
+ * NOTE: CSS หลักทั้งหมดอยู่ใน <style> tag ใน index.html
+ * ไฟล์นี้เก็บ override และ utility classes เพิ่มเติมเท่านั้น
+ */
+
+/* ===== Scrollbar (Webkit) ===== */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ===== Focus Accessibility ===== */
+button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+/* ===== Print Styles (ใช้กับ exportPDF) ===== */
+@media print {
+    .bottom-nav, .header, .marquee-container { display: none !important; }
+    body { padding: 0; background: white; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
