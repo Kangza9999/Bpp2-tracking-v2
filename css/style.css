@@ -1,9 +1,6 @@
 /**
  * ระบบติดตามแฟ้ม บก.ตชด.ภาค 2
- * style.css v2.0 — Consolidated (ไม่ซ้ำกับ index.html แล้ว)
- *
- * NOTE: CSS หลักทั้งหมดอยู่ใน <style> tag ใน index.html
- * ไฟล์นี้เก็บ override และ utility classes เพิ่มเติมเท่านั้น
+ * style.css v3.0 — Enhanced
  */
 
 /* ===== Scrollbar (Webkit) ===== */
@@ -19,9 +16,9 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 /* ===== Print Styles (ใช้กับ exportPDF) ===== */
 @media print {
-    .bottom-nav, .header, .marquee-container { display: none !important; }
-    body { padding: 0; background: white; }
-    .card { box-shadow: none; border: 1px solid #ccc; }
+    .bottom-nav, .header, .marquee-container, .btn-export, .search-box { display: none !important; }
+    body { padding: 0; background: white; color: #000; }
+    .card { box-shadow: none; border: 1px solid #ccc; width: 100%; }
 }
 
 /* ===== Reduced Motion ===== */
@@ -30,4 +27,17 @@ button:focus-visible, input:focus-visible, select:focus-visible {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* ===== Dynamic Accordion & Flex Enhancements ===== */
+.accordion-content.expanded {
+    max-height: max-content !important;
+    opacity: 1;
+    display: block;
+}
+.file-item {
+    border-bottom: 1px solid var(--border);
+}
+.file-item:last-child {
+    border-bottom: none;
 }
