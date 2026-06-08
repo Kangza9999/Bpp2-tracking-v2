@@ -1,7 +1,7 @@
 {
   "name": "ระบบติดตามแฟ้ม บก.ตชด.ภาค 2",
   "short_name": "แฟ้ม ตชด.2",
-  "description": "ระบบติดตามแฟ้มสารบรรณ บก.ตชด.ภาค 2 (v3.0 อัปเกรด)",
+  "description": "ระบบติดตามแฟ้มสารบรรณ บก.ตชด.ภาค 2",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#002D62",

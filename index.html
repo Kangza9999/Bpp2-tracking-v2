@@ -6,13 +6,185 @@
     <meta name="theme-color" content="#002D62">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>ระบบติดตามแฟ้ม บก.ตชด.ภาค 2 (v3.0)</title>
+    <title>ระบบติดตามแฟ้ม บก.ตชด.ภาค 2</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ===== CSS Variables (Light + Dark) ===== */
+        :root {
+            --navy: #002D62; --gold: #FFD700;
+            --bg: #f4f7fb; --card: #ffffff;
+            --text: #1e293b; --text-light: #64748b;
+            --border: #e2e8f0; --shadow: rgba(0,0,0,0.06);
+            --success: #dcfce7; --success-text: #166534;
+            --danger: #fee2e2; --danger-text: #991b1b;
+            --warn: #fef9c3; --warn-text: #854d0e;
+            --info: #e0f2fe; --info-text: #075985;
+        }
+        [data-theme="dark"] {
+            --navy: #1e3a6e; --gold: #FFD700;
+            --bg: #0f172a; --card: #1e293b;
+            --text: #e2e8f0; --text-light: #94a3b8;
+            --border: #334155; --shadow: rgba(0,0,0,0.3);
+            --success: #14532d; --success-text: #86efac;
+            --danger: #450a0a; --danger-text: #fca5a5;
+            --warn: #422006; --warn-text: #fde047;
+            --info: #0c2a4e; --info-text: #7dd3fc;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, border-color 0.2s, color 0.1s; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 90px; }
+
+        /* ===== Toast Notification (แทน alert()) ===== */
+        #toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px; width: calc(100% - 32px); max-width: 460px; pointer-events: none; }
+        .toast { display: flex; align-items: center; gap: 10px; background: var(--card); color: var(--text); border-radius: 12px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid var(--border); font-size: 14px; font-weight: 600; width: 100%; animation: slideUp 0.3s ease, fadeOut 0.4s ease 2.6s forwards; pointer-events: auto; }
+        .toast.success { border-left: 4px solid #22c55e; }
+        .toast.error { border-left: 4px solid #ef4444; }
+        .toast.info { border-left: 4px solid #3b82f6; }
+        .toast.warn { border-left: 4px solid #f59e0b; }
+        .toast i { font-size: 18px; flex-shrink: 0; }
+        .toast.success i { color: #22c55e; } .toast.error i { color: #ef4444; } .toast.info i { color: #3b82f6; } .toast.warn i { color: #f59e0b; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
+
+        /* ===== Header & Marquee ===== */
+        .marquee-container { background: linear-gradient(270deg,#dc2626,#2563eb,#16a34a,#d97706,#9333ea,#be123c); background-size:1200% 1200%; animation:gradientShift 30s ease infinite; color:white; padding:10px 0; font-size:14px; font-weight:700; overflow:hidden; white-space:nowrap; position:relative; z-index:101; box-shadow:0 4px 15px rgba(0,0,0,0.2); border-bottom:2px solid rgba(255,255,255,0.2); }
+        @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .marquee-text { display:inline-block; padding-left:100%; animation:marquee 25s linear infinite; text-shadow:1px 1px 3px rgba(0,0,0,0.5); }
+        @keyframes marquee { 0%{transform:translate(0,0)} 100%{transform:translate(-100%,0)} }
+        .header { background:var(--navy); color:white; padding:15px; text-align:center; border-bottom:2px solid var(--gold); position:sticky; top:0; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; }
+        .header-center { flex:1; }
+        .header h1 { font-size:18px; font-weight:700; margin:0; }
+        .header-dev { font-size:9px; color:#94a3b8; margin-top:4px; letter-spacing:2px; font-weight:700; text-transform:uppercase; }
+        .theme-toggle { background:none; border:none; color:rgba(255,255,255,0.7); font-size:18px; cursor:pointer; padding:4px 8px; border-radius:6px; }
+        .theme-toggle:active { background:rgba(255,255,255,0.1); }
+        .live-bar { background:var(--card); color:var(--navy); font-size:11px; text-align:center; padding:6px; font-weight:700; border-bottom:1px solid var(--border); }
+
+        /* ===== Layout ===== */
+        .container { padding:12px; max-width:500px; margin:0 auto; }
+        .tab-content { display:none; animation:fade 0.2s ease; }
+        .tab-content.active { display:block; }
+        @keyframes fade { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+        .card { background:var(--card); border-radius:12px; padding:20px; margin-bottom:12px; box-shadow:0 2px 10px var(--shadow); border:1px solid var(--border); }
+        .card-title { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:15px; display:flex; align-items:center; gap:8px; justify-content:center; }
+        .form-control { width:100%; padding:14px; font-size:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); margin-bottom:12px; outline:none; }
+        .form-control:focus { border-color:var(--navy); box-shadow:0 0 0 3px rgba(0,45,98,0.1); }
+        select.form-control { cursor:pointer; }
+        .btn-action { background:var(--navy); color:white; border:none; border-radius:8px; padding:14px; font-weight:700; font-size:14px; cursor:pointer; width:100%; margin-top:10px; transition:0.2s; font-family:'Sarabun',sans-serif; }
+        .btn-action:active { transform:scale(0.98); opacity:0.9; }
+        .btn-action:disabled { opacity:0.6; cursor:not-allowed; }
+        .btn-camera { display:block; width:100%; background:var(--navy); color:#fff; text-align:center; padding:12px; border-radius:8px; font-weight:700; font-size:14px; margin-top:10px; border:none; cursor:pointer; font-family:'Sarabun',sans-serif; }
+        .auth-switch { text-align:center; font-size:13px; color:var(--navy); font-weight:600; margin-top:15px; cursor:pointer; text-decoration:underline; }
+        .remember-box { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-light); font-weight:600; margin-bottom:15px; justify-content:center; }
+        .divider { border:none; border-top:1px dashed var(--border); margin:12px 0; }
+
+        /* ===== Dashboard ===== */
+        .dash-summary { display:flex; gap:8px; margin-bottom:15px; }
+        .dash-box { flex:1; background:var(--bg); border-radius:10px; padding:12px 5px; text-align:center; border:1px solid var(--border); }
+        .dash-num { font-size:24px; font-weight:700; color:var(--navy); line-height:1; margin-bottom:4px; }
+        .dash-label { font-size:10px; color:var(--text-light); font-weight:600; }
+
+        /* ===== Accordion ===== */
+        .accordion-item { border:1px solid var(--border); border-radius:8px; margin-bottom:8px; overflow:hidden; background:var(--card); }
+        .accordion-btn { width:100%; display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--bg); border:none; font-size:14px; font-weight:600; color:var(--navy); cursor:pointer; font-family:'Sarabun',sans-serif; }
+        .accordion-btn span.badge { background:var(--navy); color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; }
+        .accordion-content { max-height:0; overflow:hidden; transition:max-height 0.3s ease; background:var(--card); }
+        .accordion-content.expanded { max-height:2000px; }
+
+        /* ===== File Item ===== */
+        .file-item { padding:12px; border-top:1px dashed var(--border); background:var(--card); cursor:pointer; transition:background 0.2s; }
+        .file-item:hover { background:var(--bg); }
+        .file-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; line-height:1.4; }
+        .file-meta { display:flex; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--text-light); }
+        .tag { background:var(--bg); padding:3px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; border:1px solid var(--border); font-weight:500; color:var(--text-light); }
+        .tag.status-ok { background:var(--success); color:var(--success-text); border-color:var(--success); }
+        .tag.status-warn { background:var(--warn); color:var(--warn-text); border-color:var(--warn); }
+        .tag.status-info { background:var(--info); color:var(--info-text); border-color:var(--info); }
+        .tag.status-err { background:var(--danger); color:var(--danger-text); border-color:var(--danger); }
+        .urg-red { background:var(--danger); color:var(--danger-text); border-color:var(--danger); font-weight:700; }
+        .urg-orange { background:#ffedd5; color:#ea580c; border-color:#fdba74; font-weight:700; }
+
+        /* ===== Inputs ===== */
+        .input-group { display:flex; gap:8px; margin-bottom:12px; }
+        .input-group .form-control { margin-bottom:0; }
+        .chip-group { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+        .chip-label input { display:none; }
+        .chip { padding:8px 12px; border:1px solid var(--border); border-radius:20px; font-size:12px; font-weight:600; color:var(--text-light); cursor:pointer; background:var(--card); transition:0.2s; }
+        .chip-label input:checked + .chip { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+        /* ===== Camera ===== */
+        .camera-box-frame { position:relative; border-radius:12px; overflow:hidden; border:2px solid var(--border); background:#000; min-height:250px; width:100%; display:flex; justify-content:center; align-items:center; }
+        .camera-box-frame > div { width:100%; }
+
+        /* ===== Bottom Nav ===== */
+        .bottom-nav { position:fixed; bottom:0; left:0; width:100%; background:var(--card); display:none; justify-content:space-around; padding:10px 0 15px 0; box-shadow:0 -3px 15px var(--shadow); z-index:100; border-top:1px solid var(--border); }
+        .nav-item { flex:1; text-align:center; color:var(--text-light); font-size:10px; font-weight:600; cursor:pointer; }
+        .nav-item i { font-size:18px; display:block; margin-bottom:3px; }
+        .nav-item.active { color:var(--navy); }
+        .nav-item.active i { color:var(--gold); }
+
+        /* ===== Modal (Slide-up sheet) ===== */
+        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; display:none; opacity:0; transition:opacity 0.3s; }
+        .modal-overlay.active { display:block; opacity:1; }
+        .modal-content { position:fixed; bottom:-100%; left:0; width:100%; background:var(--card); border-radius:20px 20px 0 0; padding:20px; z-index:201; transition:bottom 0.3s; max-height:80vh; overflow-y:auto; box-shadow:0 -5px 20px rgba(0,0,0,0.2); }
+        .modal-content.active { bottom:0; }
+        .modal-close { position:absolute; top:15px; right:15px; font-size:20px; color:var(--text-light); cursor:pointer; width:30px; height:30px; text-align:center; line-height:30px; background:var(--bg); border-radius:50%; }
+        .timeline-item { position:relative; padding-left:20px; margin-bottom:15px; border-left:2px solid var(--border); }
+        .timeline-item::before { content:''; position:absolute; left:-6px; top:0; width:10px; height:10px; border-radius:50%; background:var(--navy); }
+        .timeline-time { font-size:10px; color:var(--text-light); }
+        .timeline-status { font-size:13px; font-weight:600; color:var(--navy); }
+        .timeline-user { font-size:11px; color:var(--text-light); }
+
+        /* ===== Search ===== */
+        .search-box { position:relative; margin-bottom:10px; }
+        .search-box i { position:absolute; left:12px; top:14px; color:var(--text-light); }
+        .search-box .form-control { padding-left:38px; margin-bottom:0; }
+
+        /* ===== Loading Spinner ===== */
+        .spinner { display:inline-block; width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* ===== Admin Panel ===== */
+        .admin-panel { background:var(--danger); border:1px solid var(--danger-text); border-radius:12px; padding:15px; margin-bottom:20px; }
+        .admin-title { font-size:16px; font-weight:700; color:var(--danger-text); margin-bottom:15px; text-align:center; }
+        .admin-section { font-size:13px; font-weight:700; color:var(--navy); margin-bottom:5px; }
+
+        /* ===== Analytics Charts ===== */
+        .chart-wrap { position:relative; height:220px; margin-bottom:10px; }
+
+        /* ===== Export Button ===== */
+        .btn-export { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; border-radius:8px; font-weight:700; font-size:13px; border:none; cursor:pointer; font-family:'Sarabun',sans-serif; margin-top:8px; transition:0.2s; }
+        .btn-export.excel { background:#166534; color:#fff; }
+        .btn-export.pdf { background:#991b1b; color:#fff; }
+        .btn-export:active { transform:scale(0.98); }
+
+        /* ===== PWA Install Banner ===== */
+        #pwa-banner { display:none; position:fixed; top:0; left:0; width:100%; background:var(--navy); color:white; padding:10px 16px; z-index:300; font-size:13px; align-items:center; justify-content:space-between; gap:8px; }
+        #pwa-banner button { background:var(--gold); color:var(--navy); border:none; border-radius:6px; padding:6px 12px; font-weight:700; font-family:'Sarabun',sans-serif; cursor:pointer; font-size:12px; }
+        #pwa-banner .pwa-close { background:none; border:none; color:rgba(255,255,255,0.6); font-size:16px; cursor:pointer; padding:0 4px; }
+
+        /* ===== Dept/Loc Manager ===== */
+        .mgr-item { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; transition:box-shadow 0.15s; }
+        .mgr-item.dragging { opacity:0.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); }
+        .mgr-item.drag-over { border-color:var(--navy); border-style:dashed; }
+        .mgr-item.archived { opacity:0.45; }
+        .mgr-drag { cursor:grab; color:var(--text-light); font-size:16px; flex-shrink:0; touch-action:none; }
+        .mgr-drag:active { cursor:grabbing; }
+        .mgr-name { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+        .mgr-name-input { flex:1; font-size:13px; font-weight:600; color:var(--text); border:1px solid var(--navy); border-radius:6px; padding:4px 8px; background:var(--bg); outline:none; }
+        .mgr-order { font-size:10px; color:var(--text-light); background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:1px 6px; flex-shrink:0; }
+        .mgr-actions { display:flex; gap:4px; flex-shrink:0; }
+        .mgr-btn { border:none; border-radius:6px; padding:6px 8px; font-size:12px; cursor:pointer; font-family:'Sarabun',sans-serif; transition:0.15s; }
+        .mgr-btn.edit { background:var(--info); color:var(--info-text); }
+        .mgr-btn.save { background:var(--success); color:var(--success-text); }
+        .mgr-btn.del  { background:var(--danger); color:var(--danger-text); }
+        .mgr-btn.restore { background:var(--warn); color:var(--warn-text); }
+        .mgr-empty { text-align:center; color:var(--text-light); font-size:13px; padding:20px; }
+    </style>
 </head>
 <body>
 
@@ -24,7 +196,7 @@
     <span><i class="fa-solid fa-mobile-screen-button"></i> ติดตั้งแอปบนมือถือ</span>
     <div style="display:flex;gap:8px;">
         <button id="pwa-install-btn">ติดตั้ง</button>
-        <button class="pwa-close" id="btn-pwa-close">&times;</button>
+        <button class="pwa-close" onclick="document.getElementById('pwa-banner').style.display='none'">&times;</button>
     </div>
 </div>
 
@@ -34,9 +206,9 @@
     <div style="width:40px;"></div>
     <div class="header-center">
         <h1><i class="fa-solid fa-shield-halved" style="color:var(--gold);"></i> บก.ตชด.ภาค 2</h1>
-        <div class="header-dev">SECURE TRACKING SYSTEM v3.0</div>
+        <div class="header-dev">SECURE TRACKING SYSTEM v2.0</div>
     </div>
-    <button class="theme-toggle" id="themeBtn" title="เปลี่ยนธีม"><i class="fa-solid fa-moon"></i></button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="เปลี่ยนธีม" id="themeBtn"><i class="fa-solid fa-moon"></i></button>
 </div>
 
 <div class="live-bar" id="liveUserBar" style="display:none;">
@@ -51,22 +223,22 @@
             <div class="card-title"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบสารบรรณ</div>
             <input type="text" id="loginName" class="form-control" placeholder="ยศชื่อ (พิมพ์ติดกัน ไม่ต้องใส่นามสกุล)" style="text-align:center;font-size:16px;font-weight:bold;" list="userList">
             <div class="remember-box"><input type="checkbox" id="chkRemember" checked><label for="chkRemember">จดจำบัญชีในอุปกรณ์นี้เสมอ</label></div>
-            <button id="btnVerify" class="btn-action">ลงชื่อเข้าปฏิบัติงาน</button>
-            <div class="auth-switch" id="switch-to-reg"><i class="fa-solid fa-user-plus"></i> ลงทะเบียนครั้งแรก (รอยืนยันสิทธิ์)</div>
+            <button id="btnVerify" class="btn-action" onclick="verifyUser()">ลงชื่อเข้าปฏิบัติงาน</button>
+            <div class="auth-switch" onclick="toggleAuthForm()"><i class="fa-solid fa-user-plus"></i> ลงทะเบียนครั้งแรก (รอยืนยันสิทธิ์)</div>
         </div>
         <div class="card" id="registerCard" style="display:none;">
             <div class="card-title" style="color:#166534;"><i class="fa-solid fa-user-shield"></i> ลงทะเบียนผู้ปฏิบัติงาน</div>
             <input type="text" id="regName" class="form-control" placeholder="ยศชื่อ (พิมพ์ติดกัน ไม่ต้องใส่นามสกุล)">
             <select id="regDept" class="form-control"><option value="" disabled selected>-- เลือกสังกัด/แผนกงาน --</option></select>
             <div style="font-size:11px;color:#dc2626;text-align:center;margin-bottom:10px;">* เมื่อลงทะเบียนแล้ว สิทธิ์จะตั้งค่าเป็น "รออนุมัติ"<br>กรุณาแจ้ง Admin ให้ปลดล็อกสิทธิ์ให้ท่าน</div>
-            <button id="btnRegister" class="btn-action" style="background:#166534;">ส่งข้อมูลลงทะเบียน</button>
-            <div class="auth-switch" id="switch-to-login"><i class="fa-solid fa-arrow-left"></i> กลับไปหน้าล็อกอิน</div>
+            <button id="btnRegister" class="btn-action" style="background:#166534;" onclick="submitRegistration()">ส่งข้อมูลลงทะเบียน</button>
+            <div class="auth-switch" onclick="toggleAuthForm()"><i class="fa-solid fa-arrow-left"></i> กลับไปหน้าล็อกอิน</div>
         </div>
     </div>
 
     <!-- SEARCH/DASHBOARD TAB -->
     <div id="tab-search" class="tab-content">
-        <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="searchInput" class="form-control" placeholder="ค้นหาเลขแฟ้ม, ชื่อเรื่อง หรือชื่อเจ้าของเรื่อง..."></div>
+        <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="searchInput" class="form-control" placeholder="ค้นหาเลขแฟ้ม, ชื่อเรื่อง หรือชื่อเจ้าของเรื่อง..." oninput="debounceSearch()"></div>
         <div id="miniDashboard">
             <div class="dash-summary">
                 <div class="dash-box"><div class="dash-num" id="dash-total">0</div><div class="dash-label">แฟ้มดำเนินการ</div></div>
@@ -96,7 +268,7 @@
             <hr class="divider">
             <div class="input-group">
                 <input type="text" id="manualIdAssign" class="form-control" placeholder="พิมพ์รหัสแฟ้ม" style="text-transform:uppercase;">
-                <button class="btn-action" id="btnManualAssign" style="width:auto;padding:14px 16px;margin-top:0;">ผูกข้อมูล</button>
+                <button class="btn-action" style="width:auto;padding:14px 16px;margin-top:0;" onclick="manualAssign()">ผูกข้อมูล</button>
             </div>
             <div class="camera-box-frame" id="cameraBoxAssign"><div id="reader-assign"></div></div>
             <label class="btn-camera" style="background:var(--gold);color:var(--navy);"><i class="fa-solid fa-image"></i> อัปโหลดรูปภาพ QR <input type="file" id="qr-assign" accept="image/*" style="display:none;"></label>
@@ -107,14 +279,14 @@
     <div id="tab-scan" class="tab-content">
         <div class="card">
             <div class="card-title"><i class="fa-solid fa-bolt"></i> อัปเดตสถานะแฟ้ม / เคลียร์แฟ้ม</div>
-            <div class="chip-group" id="scanStatusGroup">
-                <label class="chip-label"><input type="radio" name="scanStatus" value="รับแฟ้มเข้า" checked><div class="chip">รับแฟ้มเข้า</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="ส่งแฟ้มออก"><div class="chip">ส่งแฟ้มออก</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="เสนอ ผบก.ฯ"><div class="chip">เสนอ ผบก.ฯ</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="พิจารณาแล้ว"><div class="chip">พิจารณาแล้ว</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="อนุมัติแล้ว"><div class="chip">อนุมัติแล้ว</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="ส่งกลับแก้ไข"><div class="chip" style="border-color:#dc2626;color:#dc2626;">ส่งกลับแก้ไข</div></label>
-                <label class="chip-label"><input type="radio" name="scanStatus" value="รับแฟ้มคืน (เสร็จสิ้น)"><div class="chip" style="background:#166534;color:white;">✅ รับแฟ้มคืน (เสร็จสิ้น)</div></label>
+            <div class="chip-group">
+                <label class="chip-label"><input type="radio" name="scanStatus" value="รับแฟ้มเข้า" checked onchange="togglePhotoUpload()"><div class="chip">รับแฟ้มเข้า</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="ส่งแฟ้มออก" onchange="togglePhotoUpload()"><div class="chip">ส่งแฟ้มออก</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="เสนอ ผบก.ฯ" onchange="togglePhotoUpload()"><div class="chip">เสนอ ผบก.ฯ</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="พิจารณาแล้ว" onchange="togglePhotoUpload()"><div class="chip">พิจารณาแล้ว</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="อนุมัติแล้ว" onchange="togglePhotoUpload()"><div class="chip">อนุมัติแล้ว</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="ส่งกลับแก้ไข" onchange="togglePhotoUpload()"><div class="chip" style="border-color:#dc2626;color:#dc2626;">ส่งกลับแก้ไข</div></label>
+                <label class="chip-label"><input type="radio" name="scanStatus" value="รับแฟ้มคืน (เสร็จสิ้น)" onchange="togglePhotoUpload()"><div class="chip" style="background:#166534;color:white;">✅ รับแฟ้มคืน (เสร็จสิ้น)</div></label>
             </div>
             <div id="photoUploadSection" style="display:none;background:var(--danger);padding:10px;border-radius:8px;margin-bottom:12px;border:1px dashed var(--danger-text);">
                 <div style="font-size:12px;font-weight:700;color:var(--danger-text);margin-bottom:5px;"><i class="fa-solid fa-camera"></i> ถ่ายภาพจุดที่ต้องแก้ไข</div>
@@ -124,7 +296,7 @@
             <select id="locScan" class="form-control" style="margin-top:10px;"></select>
             <div class="input-group">
                 <input type="text" id="manualIdScan" class="form-control" placeholder="ระบุเลขแฟ้ม" style="text-transform:uppercase;">
-                <button class="btn-action" id="btnManualScan" style="width:auto;padding:14px 16px;margin-top:0;">อัปเดต</button>
+                <button class="btn-action" style="width:auto;padding:14px 16px;margin-top:0;" onclick="manualScan()">อัปเดต</button>
             </div>
             <div class="camera-box-frame" id="cameraBoxScan"><div id="reader-scan"></div></div>
             <label class="btn-camera" style="background:var(--gold);color:var(--navy);"><i class="fa-solid fa-image"></i> อัปโหลดรูปภาพ QR <input type="file" id="qr-scan" accept="image/*" style="display:none;"></label>
@@ -141,8 +313,8 @@
             <div style="font-size:11px;color:var(--text-light);text-align:center;margin-bottom:15px;">สัดส่วนสถานะแฟ้มทั้งหมด</div>
             <div id="analyticsTable"></div>
             <div style="display:flex;gap:8px;margin-top:10px;">
-                <button class="btn-export excel" id="btnExportExcel"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-                <button class="btn-export pdf" id="btnExportPDF"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+                <button class="btn-export excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                <button class="btn-export pdf" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
             </div>
         </div>
     </div>
@@ -152,7 +324,7 @@
         <div class="card">
             <div class="card-title"><i class="fa-solid fa-user-gear"></i> ข้อมูลบัญชีผู้เข้าใช้งาน</div>
             <div id="accountDetailsZone" style="font-size:14px;padding:15px;background:var(--bg);border-radius:8px;margin-bottom:10px;"></div>
-            <button class="btn-camera" id="btnLogout" style="background:#dc2626;"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+            <button class="btn-camera" style="background:#dc2626;" onclick="logoutManual()"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
         </div>
 
         <div id="adminPanel" style="display:none;" class="admin-panel">
@@ -161,80 +333,1144 @@
             <div class="admin-section"><i class="fa-solid fa-file-csv"></i> นำเข้ารายชื่อเจ้าหน้าที่ (CSV)</div>
             <div style="font-size:11px;color:var(--text-light);margin-bottom:5px;">รูปแบบ: name, dept, role (3 columns, มี header แถวแรก)</div>
             <input type="file" id="csvFileInput" accept=".csv" class="form-control" style="font-size:12px;">
-            <button class="btn-camera" id="btnImportCSV" style="background:var(--navy);margin-bottom:15px;"><i class="fa-solid fa-upload"></i> อัปโหลดและนำเข้าระบบ</button>
+            <button class="btn-camera" style="background:var(--navy);margin-bottom:15px;" onclick="importCSV()"><i class="fa-solid fa-upload"></i> อัปโหลดและนำเข้าระบบ</button>
 
             <div class="admin-section"><i class="fa-solid fa-users-gear"></i> จัดการสิทธิ์เจ้าหน้าที่</div>
-            <button class="btn-camera" id="btnLoadAdminUsers" style="background:var(--gold);color:var(--navy);margin-bottom:10px;"><i class="fa-solid fa-list"></i> โหลดรายชื่อผู้ใช้งานทั้งหมด</button>
+            <button class="btn-camera" style="background:var(--gold);color:var(--navy);margin-bottom:10px;" onclick="loadAdminUsers()"><i class="fa-solid fa-list"></i> โหลดรายชื่อผู้ใช้งานทั้งหมด</button>
             <div id="adminUserList" style="margin-bottom:15px;font-size:12px;max-height:300px;overflow-y:auto;background:var(--card);padding:5px;border-radius:4px;"></div>
 
             <div class="admin-section"><i class="fa-solid fa-bullhorn"></i> ปรับแต่งประกาศ (ปชส.)</div>
             <div class="input-group" style="margin-bottom:15px;">
                 <input type="text" id="announcementInput" class="form-control" placeholder="พิมพ์ข้อความ...">
-                <button class="btn-action" id="btnUpdateAnnouncement" style="margin-top:0;width:auto;padding:14px;">สั่งการ</button>
+                <button class="btn-action" style="margin-top:0;width:auto;padding:14px;" onclick="updateAnnouncement()">สั่งการ</button>
             </div>
 
             <div class="admin-section"><i class="fa-solid fa-clock-rotate-left"></i> System Logs</div>
-            <button class="btn-camera" id="btnLoadAdminLogs" style="background:#0284c7;margin-bottom:5px;"><i class="fa-solid fa-magnifying-glass"></i> ดูประวัติกิจกรรมล่าสุด</button>
+            <button class="btn-camera" style="background:#0284c7;margin-bottom:5px;" onclick="loadAdminLogs()"><i class="fa-solid fa-magnifying-glass"></i> ดูประวัติกิจกรรมล่าสุด</button>
             <div id="adminLogList" style="margin-bottom:15px;font-size:11px;max-height:200px;overflow-y:auto;background:var(--card);padding:5px;border-radius:4px;"></div>
 
             <div class="admin-section"><i class="fa-solid fa-box-archive"></i> จัดเก็บข้อมูลเข้ากรุ</div>
-            <button class="btn-camera" id="btnArchiveSystem" style="background:#ca8a04;"><i class="fa-solid fa-broom"></i> จัดเก็บแฟ้มที่เสร็จสิ้นเข้าคลังถาวร</button>
+            <button class="btn-camera" style="background:#ca8a04;" onclick="archiveSystem()"><i class="fa-solid fa-broom"></i> จัดเก็บแฟ้มที่เสร็จสิ้นเข้าคลังถาวร</button>
         </div>
     </div>
 </div>
 
-<!-- DEPT & LOCATION MANAGER TAB (Admin only) -->
-<div id="tab-deptmgr" class="tab-content">
-    <div class="card">
-        <div class="card-title"><i class="fa-solid fa-building-user"></i> จัดการแผนกงาน</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <input type="text" id="newDeptName" class="form-control" placeholder="ชื่อแผนกใหม่..." style="margin-bottom:0;">
-            <button class="btn-action" id="btnAddDept" style="width:auto;padding:12px 16px;margin-top:0;">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+    <!-- DEPT & LOCATION MANAGER TAB (Admin only) -->
+    <div id="tab-deptmgr" class="tab-content">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-building-user"></i> จัดการแผนกงาน</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="newDeptName" class="form-control" placeholder="ชื่อแผนกใหม่..." style="margin-bottom:0;">
+                <button class="btn-action" style="width:auto;padding:12px 16px;margin-top:0;" onclick="addDept()">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
+                <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ &nbsp;·&nbsp; กดไอคอนแก้ไขหรือลบ
+            </div>
+            <div id="deptList" style="min-height:40px;"></div>
         </div>
-        <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
-            <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ &nbsp;·&nbsp; กดไอคอนแก้ไขหรือลบ
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-location-dot"></i> จัดการพิกัดตำแหน่ง</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="newLocName" class="form-control" placeholder="ชื่อพิกัดใหม่..." style="margin-bottom:0;">
+                <button class="btn-action" style="width:auto;padding:12px 16px;margin-top:0;" onclick="addLoc()">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
+                <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ
+            </div>
+            <div id="locList" style="min-height:40px;"></div>
         </div>
-        <div id="deptList" style="min-height:40px;"></div>
+
+        <div style="text-align:center;font-size:11px;color:var(--text-light);padding:8px 0 4px;">
+            การเปลี่ยนแปลงมีผลทันทีกับ dropdown ทุกหน้า
+        </div>
     </div>
 
-    <div class="card">
-        <div class="card-title"><i class="fa-solid fa-location-dot"></i> จัดการพิกัดตำแหน่ง</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <input type="text" id="newLocName" class="form-control" placeholder="ชื่อพิกัดใหม่..." style="margin-bottom:0;">
-            <button class="btn-action" id="btnAddLoc" style="width:auto;padding:12px 16px;margin-top:0;">
-                <i class="fa-solid fa-plus"></i>
-            </button>
-        </div>
-        <div style="font-size:11px;color:var(--text-light);margin-bottom:10px;">
-            <i class="fa-solid fa-grip-lines"></i> ลากเพื่อเรียงลำดับ
-        </div>
-        <div id="locList" style="min-height:40px;"></div>
-    </div>
-</div>
 
 <!-- Bottom Nav -->
 <div class="bottom-nav" id="mainNav">
-    <div class="nav-item active" id="nav-search"><i class="fa-solid fa-chart-pie"></i><span>แดชบอร์ด</span></div>
-    <div class="nav-item" id="nav-assign"><i class="fa-solid fa-folder-plus"></i><span>ผูกเรื่อง</span></div>
-    <div class="nav-item" id="nav-scan"><i class="fa-solid fa-bolt"></i><span>อัปเดต</span></div>
-    <div class="nav-item" id="nav-analytics"><i class="fa-solid fa-chart-bar"></i><span>สถิติ</span></div>
-    <div class="nav-item" id="nav-deptmgr" style="display:none;"><i class="fa-solid fa-building-user"></i><span>แผนก</span></div>
-    <div class="nav-item" id="nav-profile"><i class="fa-solid fa-user-lock"></i><span>โปรไฟล์</span></div>
+    <div class="nav-item active" onclick="switchTab('tab-search',this)"><i class="fa-solid fa-chart-pie"></i><span>แดชบอร์ด</span></div>
+    <div class="nav-item" onclick="switchTab('tab-assign',this)"><i class="fa-solid fa-folder-plus"></i><span>ผูกเรื่อง</span></div>
+    <div class="nav-item" onclick="switchTab('tab-scan',this)"><i class="fa-solid fa-bolt"></i><span>อัปเดต</span></div>
+    <div class="nav-item" onclick="switchTab('tab-analytics',this)"><i class="fa-solid fa-chart-bar"></i><span>สถิติ</span></div>
+    <div class="nav-item" id="nav-deptmgr" onclick="switchTab('tab-deptmgr',this)" style="display:none;"><i class="fa-solid fa-building-user"></i><span>แผนก</span></div>
+    <div class="nav-item" id="nav-profile" onclick="switchTab('tab-profile',this)"><i class="fa-solid fa-user-lock"></i><span>โปรไฟล์</span></div>
 </div>
 
 <!-- History Modal -->
-<div class="modal-overlay" id="historyOverlay"></div>
+<div class="modal-overlay" id="historyOverlay" onclick="closeHistory()"></div>
 <div class="modal-content" id="historyModal">
-    <div class="modal-close" id="btn-modal-close"><i class="fa-solid fa-xmark"></i></div>
+    <div class="modal-close" onclick="closeHistory()"><i class="fa-solid fa-xmark"></i></div>
     <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:15px;" id="historyTitle">ประวัติแฟ้ม</div>
     <div id="historyTimeline"></div>
 </div>
 
 <div id="dummy-reader" style="display:none;"></div>
 
-<!-- Unified App Logic Scripts Load -->
-<script src="js/app.js"></script>
+<script>
+// ========================================================
+// CONFIG — แก้เฉพาะ API_URL เมื่อ re-deploy GAS
+// ========================================================
+const API_URL = "https://script.google.com/macros/s/AKfycbwvIUI093e_N1lgzGhpxC_SGkG2fkTlnjr8yiSdMm6kkR8I9mBwECq9FvRjOTLuLQci/exec";
+
+// ========================================================
+// UTILITIES
+// ========================================================
+function getToken() { return localStorage.getItem("bpp_token") || sessionStorage.getItem("bpp_token"); }
+
+function escapeHtml(s) {
+    return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ========================================================
+// TOAST — แทน alert() ทั้งระบบ
+// ========================================================
+function showToast(msg, type="info", duration=3000) {
+    const icons = { success:"fa-circle-check", error:"fa-circle-xmark", warn:"fa-triangle-exclamation", info:"fa-circle-info" };
+    const el = document.createElement("div");
+    el.className = `toast ${type}`;
+    el.innerHTML = `<i class="fa-solid ${icons[type]||icons.info}"></i><span>${escapeHtml(msg)}</span>`;
+    document.getElementById("toast-container").appendChild(el);
+    setTimeout(() => el.remove(), duration + 400);
+}
+
+// ========================================================
+// DARK MODE
+// ========================================================
+function applyTheme(dark) {
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("themeBtn").innerHTML = dark
+        ? '<i class="fa-solid fa-sun"></i>'
+        : '<i class="fa-solid fa-moon"></i>';
+    localStorage.setItem("bpp_theme", dark ? "dark" : "light");
+    if (window.chartDeptInst) updateChartsTheme();
+}
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    applyTheme(!isDark);
+}
+(function initTheme() {
+    const saved = localStorage.getItem("bpp_theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(saved ? saved === "dark" : prefersDark);
+})();
+
+// ========================================================
+// CORS-SAFE POST (แก้ C1 + ใช้ form-urlencoded ถูกต้อง)
+// ========================================================
+async function fetchSafePOST(payload) {
+    const formData = new URLSearchParams();
+    formData.append("payload", JSON.stringify(payload));
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString()
+        });
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("เซิร์ฟเวอร์ไม่ตอบกลับเป็น JSON — ตรวจสอบสิทธิ์ Deploy 'Anyone'");
+        }
+        const data = await response.json();
+        if (data && data.error && (data.error.includes("เซสชัน") || data.error.includes("Token"))) {
+            localStorage.removeItem("bpp_token"); sessionStorage.removeItem("bpp_token");
+            showToast("⚠️ เซสชันหมดอายุ กรุณาล็อกอินใหม่", "warn");
+            setTimeout(() => location.reload(), 1500);
+            throw new Error("SESSION_EXPIRED");
+        }
+        return data;
+    } catch (err) {
+        if (err.message === "SESSION_EXPIRED") throw err;
+        console.error("API Error:", err);
+        throw new Error(err.message || "เชื่อมต่อไม่ได้ กรุณาตรวจสอบเครือข่าย");
+    }
+}
+
+// ========================================================
+// IMAGE RESIZE (แก้ W2 — จำกัด base64 ก่อนส่ง)
+// ========================================================
+function resizeImageToBase64(file, maxWidth=800, maxHeight=800, quality=0.75) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement("canvas");
+                let w = img.width, h = img.height;
+                if (w > maxWidth || h > maxHeight) {
+                    const ratio = Math.min(maxWidth/w, maxHeight/h);
+                    w = Math.round(w * ratio); h = Math.round(h * ratio);
+                }
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve({ base64: canvas.toDataURL("image/jpeg", quality), mime: "image/jpeg" });
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// ========================================================
+// AUTH
+// ========================================================
+function toggleAuthForm() {
+    const log = document.getElementById("loginCard"), reg = document.getElementById("registerCard");
+    log.style.display = log.style.display === "none" ? "block" : "none";
+    reg.style.display = reg.style.display === "none" ? "block" : "none";
+}
+
+function verifyUser() {
+    const name = document.getElementById("loginName").value.trim();
+    const remember = document.getElementById("chkRemember").checked;
+    if (!name) return showToast("กรุณาพิมพ์ยศและชื่อของท่าน", "warn");
+    const btn = document.getElementById("btnVerify");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>กำลังเข้าสู่ระบบ...';
+    fetchSafePOST({ action: "login", name: name })
+        .then(res => {
+            if (res.auth) {
+                const storage = remember ? localStorage : sessionStorage;
+                storage.setItem("bpp_token", res.token);
+                storage.setItem("bpp_user", res.user.trim());
+                storage.setItem("bpp_role", res.role);
+                storage.setItem("bpp_dept", res.dept);
+                showToast(`ยินดีต้อนรับ ${res.user}`, "success");
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(res.message || "ไม่พบข้อมูลผู้ใช้", "error");
+                btn.disabled = false; btn.innerHTML = "ลงชื่อเข้าปฏิบัติงาน";
+            }
+        }).catch(err => {
+            if (err.message !== "SESSION_EXPIRED") showToast(err.message, "error");
+            btn.disabled = false; btn.innerHTML = "ลองอีกครั้ง";
+        });
+}
+
+function submitRegistration() {
+    const name = document.getElementById("regName").value.trim();
+    const dept = document.getElementById("regDept").value;
+    if (!name || !dept) return showToast("กรุณากรอกยศชื่อ และเลือกสังกัด", "warn");
+    const btn = document.getElementById("btnRegister");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>กำลังลงทะเบียน...';
+    fetchSafePOST({ action: "self_register", name, dept })
+        .then(d => {
+            if (d.status === "success") {
+                showToast(d.message, "success");
+                toggleAuthForm();
+                document.getElementById("loginName").value = name;
+            } else { showToast("ข้อผิดพลาด: " + d.message, "error"); }
+            btn.disabled = false; btn.innerHTML = "ส่งข้อมูลลงทะเบียน";
+        }).catch(e => { showToast(e.message, "error"); btn.disabled = false; btn.innerHTML = "ส่งข้อมูลลงทะเบียน"; });
+}
+
+function logoutManual() {
+    if (!confirm("ต้องการออกจากระบบ?")) return;
+    fetchSafePOST({ action: "logout", token: getToken() })
+        .finally(() => { localStorage.clear(); sessionStorage.clear(); location.reload(); });
+}
+
+// ========================================================
+// INIT
+// ========================================================
+window.onload = function() {
+    const token = getToken();
+    if (token) {
+        document.getElementById("tab-auth").classList.remove("active");
+        document.getElementById("tab-search").classList.add("active");
+        document.getElementById("mainNav").style.display = "flex";
+        document.getElementById("liveUserBar").style.display = "block";
+        const role = localStorage.getItem("bpp_role");
+        const user = localStorage.getItem("bpp_user");
+        const dept = localStorage.getItem("bpp_dept");
+        document.getElementById("accountDetailsZone").innerHTML =
+            `<p><b>ชื่อเจ้าหน้าที่:</b> ${escapeHtml(user)}</p>
+             <p><b>สังกัด/แผนก:</b> ${escapeHtml(dept)}</p>
+             <p><b>สิทธิ์การใช้งาน:</b> <span style="color:var(--success-text);font-weight:bold;">${escapeHtml(role)}</span></p>`;
+        if (role === "Admin") {
+            document.getElementById("adminPanel").style.display = "block";
+            document.getElementById("nav-profile").innerHTML = '<i class="fa-solid fa-crown"></i><span>แอดมิน</span>';
+            document.getElementById("nav-deptmgr").style.display = "";
+        }
+        loadRemoteConfig(token);
+        populateAllDropdowns();
+        fetchSafePOST({ action: "get_user_names", token }).then(names => {
+            if (Array.isArray(names)) {
+                const dl = document.getElementById("userList"); dl.innerHTML = "";
+                names.forEach(n => dl.appendChild(new Option(n)));
+            }
+        }).catch(() => {});
+        fetchSafePOST({ action: "getConfig", token }).then(d => {
+            if (d.text) document.getElementById("marqueeText").innerHTML = `<i class="fa-solid fa-bullhorn"></i> ${escapeHtml(d.text)}`;
+        }).catch(() => {});
+        loadDash();
+        liveSync();
+        setInterval(liveSync, 15000);
+    } else {
+        document.getElementById("mainNav").style.display = "none";
+        document.getElementById("liveUserBar").style.display = "none";
+    }
+};
+
+// ========================================================
+// SCANNER
+// ========================================================
+let scannerAssign = null, scannerScan = null;
+const html5QrCodeDummy = new Html5Qrcode("dummy-reader");
+
+function stopAllScanners() {
+    if (scannerAssign) { scannerAssign.clear(); scannerAssign = null; document.getElementById("reader-assign").innerHTML = ""; }
+    if (scannerScan) { scannerScan.clear(); scannerScan = null; document.getElementById("reader-scan").innerHTML = ""; }
+}
+function initScannerAssign() {
+    stopAllScanners();
+    scannerAssign = new Html5QrcodeScanner("reader-assign", { fps:10, qrbox:{width:250,height:250} }, false);
+    scannerAssign.render(text => { scannerAssign.pause(); runAssign(text); setTimeout(() => scannerAssign.resume(), 2000); });
+}
+function initScannerScan() {
+    stopAllScanners();
+    scannerScan = new Html5QrcodeScanner("reader-scan", { fps:10, qrbox:{width:250,height:250} }, false);
+    scannerScan.render(text => { scannerScan.pause(); runScan(text); setTimeout(() => scannerScan.resume(), 2000); });
+}
+
+// ========================================================
+// TAB NAVIGATION
+// ========================================================
+function switchTab(id, el) {
+    const role = localStorage.getItem("bpp_role");
+    if (id === "tab-assign" && role !== "ธุรการ" && role !== "Admin")
+        return showToast("⚠️ หน้าผูกเรื่องจำกัดเฉพาะ [ธุรการ / Admin]", "warn");
+    if (id === "tab-scan" && role !== "หน้าห้อง" && role !== "ธุรการ" && role !== "Admin" && role !== "เจ้าของเรื่อง")
+        return showToast("⚠️ การอัปเดตจำกัดเฉพาะเจ้าหน้าที่ปฏิบัติงาน", "warn");
+    if (id === "tab-deptmgr" && role !== "Admin")
+        return showToast("⚠️ หน้าจัดการแผนกจำกัดเฉพาะ Admin", "warn");
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    el.classList.add("active");
+    stopAllScanners();
+    if (id === "tab-search") loadDash(true);
+    if (id === "tab-analytics") loadAnalytics();
+    if (id === "tab-assign") initScannerAssign();
+    if (id === "tab-scan") initScannerScan();
+    if (id === "tab-deptmgr") { renderDeptList(); renderLocList(); }
+}
+
+// ========================================================
+// DASHBOARD
+// ========================================================
+function getStatusClass(s) {
+    if (s.includes("อนุมัติ") || s.includes("รับ")) return "status-ok";
+    if (s.includes("ตีกลับ") || s.includes("แก้ไข")) return "status-err";
+    return "status-warn";
+}
+
+function buildFileHTML(f) {
+    const eId = escapeHtml(f.id), eTitle = escapeHtml(f.title);
+    const eAction = escapeHtml(f.action), eLoc = escapeHtml(f.loc), eTime = escapeHtml(f.time);
+    const sC = getStatusClass(eAction);
+    const uH = f.urgency !== "ปกติ"
+        ? `<span class="tag urg-red"><i class="fa-solid fa-bolt"></i> ${escapeHtml(f.urgency)}</span>`
+        : `<span class="tag">ปกติ</span>`;
+    const imgBtn = f.img ? `<span class="tag status-err"><i class="fa-solid fa-image"></i> มีภาพ</span>` : "";
+    const ownerTag = (f.owner && f.owner !== "ไม่ระบุ")
+        ? `<span class="tag status-info"><i class="fa-solid fa-user-tag"></i> ${escapeHtml(f.owner)}</span>` : "";
+    return `<div class="file-item" onclick="openHistory('${eId}','${eTitle}')">
+        <div class="file-title"><span style="color:var(--navy);">[ ${eId} ]</span> ${eTitle}</div>
+        <div class="file-meta">
+            <span class="tag"><i class="fa-solid fa-location-dot"></i> ${eLoc}</span>
+            <span class="tag ${sC}"><i class="fa-solid fa-circle-info"></i> ${eAction}</span>
+            ${uH}<span class="tag"><i class="fa-regular fa-clock"></i> ${eTime}</span>${ownerTag}${imgBtn}
+        </div></div>`;
+}
+
+function toggleAcc(btn) {
+    const c = btn.nextElementSibling, ic = btn.querySelector("i.acc-icon");
+    c.classList.toggle("expanded");
+    ic.className = c.classList.contains("expanded") ? "fa-solid fa-minus acc-icon" : "fa-solid fa-plus acc-icon";
+}
+
+let isFetching = false;
+function loadDash(isSync=false) {
+    const token = getToken();
+    if (!token || isFetching) return;
+    isFetching = true;
+    const openIds = Array.from(document.querySelectorAll(".accordion-content.expanded"))
+        .map(el => el.previousElementSibling.getAttribute("data-id"));
+    fetchSafePOST({ action: "getDash", token })
+        .then(data => {
+            document.getElementById("dash-total").innerText = data.total;
+            document.getElementById("dash-in").innerText = data.in;
+            document.getElementById("dash-urg").innerText = data.urgent ? data.urgent.length : 0;
+            let topHtml = "";
+            if (data.urgent && data.urgent.length > 0) {
+                let uH = ""; data.urgent.forEach(f => uH += buildFileHTML(f));
+                topHtml += `<div class="accordion-item"><button class="accordion-btn" data-id="urgent" style="background:#fef2f2;color:#dc2626;" onclick="toggleAcc(this)"><div>🔥 แฟ้มด่วนที่สุด <span class="badge" style="background:#dc2626;">${data.urgent.length}</span></div><i class="fa-solid fa-plus acc-icon"></i></button><div class="accordion-content">${uH}</div></div>`;
+            }
+            if (data.approved && data.approved.length > 0) {
+                let aH = ""; data.approved.forEach(f => aH += buildFileHTML(f));
+                topHtml += `<div class="accordion-item"><button class="accordion-btn" data-id="approved" style="background:#f0fdf4;color:#166534;" onclick="toggleAcc(this)"><div>✅ แฟ้มอนุมัติแล้ว <span class="badge" style="background:#166534;">${data.approved.length}</span></div><i class="fa-solid fa-plus acc-icon"></i></button><div class="accordion-content">${aH}</div></div>`;
+            }
+            document.getElementById("dash-top-accordion").innerHTML = topHtml;
+            let html = "";
+            if (data.sortedDepts) {
+                data.sortedDepts.forEach(d => {
+                    let fH = ""; d.files.forEach(f => fH += buildFileHTML(f));
+                    html += `<div class="accordion-item"><button class="accordion-btn" data-id="dept-${escapeHtml(d.name)}" onclick="toggleAcc(this)"><div>${escapeHtml(d.name)} <span class="badge">${d.count} แฟ้ม</span></div><i class="fa-solid fa-plus acc-icon"></i></button><div class="accordion-content">${fH}</div></div>`;
+                });
+            }
+            document.getElementById("dash-accordion").innerHTML = html || "<div style='text-align:center;padding:15px;color:#94a3b8;'>ไม่มีแฟ้มค้างในระบบ</div>";
+            document.querySelectorAll(".accordion-btn").forEach(btn => {
+                if (openIds.includes(btn.getAttribute("data-id"))) {
+                    btn.nextElementSibling.classList.add("expanded");
+                    btn.querySelector("i.acc-icon").className = "fa-solid fa-minus acc-icon";
+                }
+            });
+            const now = new Date();
+            document.getElementById("lastUpdatedText").innerText = `อัปเดตล่าสุด ${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")} น.`;
+        })
+        .catch(() => {})
+        .finally(() => { isFetching = false; }); // FIX C3: ใช้ finally ป้องกัน flag ค้าง
+}
+
+// ========================================================
+// LIVE SYNC
+// ========================================================
+function liveSync() {
+    const token = getToken(); if (!token) return;
+    fetchSafePOST({ action: "ping", token }).then(res => {
+        document.getElementById("onlineCount").innerText = res.count || 0;
+        document.getElementById("onlineNames").innerText = res.text ? `( ${escapeHtml(res.text)} )` : "";
+    }).catch(() => {});
+    if (document.getElementById("tab-search").classList.contains("active")) loadDash(true);
+    if (document.getElementById("tab-analytics").classList.contains("active")) loadAnalytics();
+}
+
+// ========================================================
+// ANALYTICS + CHARTS
+// ========================================================
+let chartDeptInst = null, chartStatusInst = null;
+
+function getChartColors(dark) {
+    return dark
+        ? { grid:"rgba(255,255,255,0.1)", text:"#94a3b8", bar:"rgba(99,179,237,0.8)", success:"rgba(110,231,183,0.8)", warn:"rgba(252,211,77,0.8)", danger:"rgba(252,129,129,0.8)" }
+        : { grid:"rgba(0,0,0,0.07)", text:"#64748b", bar:"rgba(0,45,98,0.8)", success:"rgba(22,163,74,0.8)", warn:"rgba(202,138,4,0.8)", danger:"rgba(220,38,38,0.8)" };
+}
+
+function loadAnalytics() {
+    const token = getToken(); if (!token) return;
+    fetchSafePOST({ action: "getAnalytics", token }).then(data => {
+        const dark = document.documentElement.getAttribute("data-theme") === "dark";
+        const c = getChartColors(dark);
+        const depts = Object.keys(data);
+        const pending = depts.map(d => data[d].pending);
+        const completed = depts.map(d => data[d].completed);
+        const total = depts.reduce((a, d) => a + data[d].total, 0);
+        const totalCompleted = depts.reduce((a, d) => a + data[d].completed, 0);
+        const totalPending = depts.reduce((a, d) => a + data[d].pending, 0);
+
+        // Bar Chart — แฟ้มค้างแยกแผนก
+        if (chartDeptInst) chartDeptInst.destroy();
+        const ctx1 = document.getElementById("chartDept").getContext("2d");
+        chartDeptInst = new Chart(ctx1, {
+            type: "bar",
+            data: {
+                labels: depts,
+                datasets: [
+                    { label: "ค้างดำเนินการ", data: pending, backgroundColor: c.danger, borderRadius: 4 },
+                    { label: "เสร็จสิ้น", data: completed, backgroundColor: c.success, borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: c.text, font: { family: "Sarabun", size: 11 } } } },
+                scales: {
+                    x: { stacked: true, ticks: { color: c.text, font: { family: "Sarabun", size: 10 } }, grid: { color: c.grid } },
+                    y: { stacked: true, ticks: { color: c.text, font: { family: "Sarabun", size: 10 } }, grid: { color: c.grid } }
+                }
+            }
+        });
+
+        // Doughnut — สัดส่วนสถานะ
+        if (chartStatusInst) chartStatusInst.destroy();
+        const ctx2 = document.getElementById("chartStatus").getContext("2d");
+        chartStatusInst = new Chart(ctx2, {
+            type: "doughnut",
+            data: {
+                labels: ["ค้างดำเนินการ", "เสร็จสิ้น"],
+                datasets: [{ data: [totalPending, totalCompleted], backgroundColor: [c.danger, c.success], borderWidth: 0 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: c.text, font: { family: "Sarabun", size: 12 } } },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} แฟ้ม (${Math.round(ctx.parsed/total*100)}%)` } }
+                }
+            }
+        });
+
+        // Table
+        let html = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <tr style="background:var(--bg);"><th style="padding:8px;text-align:left;color:var(--navy);">แผนก</th><th style="padding:8px;text-align:center;color:var(--navy);">รวม</th><th style="padding:8px;text-align:center;color:#166534;">เสร็จ</th><th style="padding:8px;text-align:center;color:#dc2626;">ค้าง</th></tr>`;
+        depts.forEach(dept => {
+            html += `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:8px;font-weight:600;color:var(--text);">${escapeHtml(dept)}</td>
+                <td style="padding:8px;text-align:center;">${data[dept].total}</td>
+                <td style="padding:8px;text-align:center;color:var(--success-text);">${data[dept].completed}</td>
+                <td style="padding:8px;text-align:center;color:var(--danger-text);">${data[dept].pending}</td>
+            </tr>`;
+        });
+        document.getElementById("analyticsTable").innerHTML = html + "</table>";
+        // store for export
+        window._analyticsData = data;
+    }).catch(() => {});
+}
+
+function updateChartsTheme() {
+    if (window._analyticsData) loadAnalytics();
+}
+
+// ========================================================
+// EXPORT EXCEL (CSV)
+// ========================================================
+function exportExcel() {
+    const data = window._analyticsData;
+    if (!data) return showToast("กรุณาโหลดข้อมูลสถิติก่อน", "warn");
+    let csv = "แผนก,รวมทั้งหมด,เสร็จสิ้น,ค้างดำเนินการ\n";
+    Object.keys(data).forEach(dept => {
+        csv += `"${dept}",${data[dept].total},${data[dept].completed},${data[dept].pending}\n`;
+    });
+    const blob = new Blob(["\ufeff"+csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `bpp2_report_${new Date().toLocaleDateString("th-TH").replace(/\//g,"-")}.csv`;
+    a.click();
+    showToast("ดาวน์โหลด Excel (CSV) สำเร็จ", "success");
+}
+
+// ========================================================
+// EXPORT PDF (Print)
+// ========================================================
+function exportPDF() {
+    const data = window._analyticsData;
+    if (!data) return showToast("กรุณาโหลดข้อมูลสถิติก่อน", "warn");
+    let rows = Object.keys(data).map(dept =>
+        `<tr><td>${dept}</td><td>${data[dept].total}</td><td style="color:green">${data[dept].completed}</td><td style="color:red">${data[dept].pending}</td></tr>`
+    ).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>รายงาน บก.ตชด.ภาค 2</title>
+    <style>body{font-family:Sarabun,sans-serif;padding:20px;}h2{color:#002D62;}table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #ccc;padding:8px;}th{background:#f1f5f9;}</style>
+    </head><body><h2>รายงานสถิติแฟ้ม บก.ตชด.ภาค 2</h2><p>วันที่พิมพ์: ${new Date().toLocaleDateString("th-TH")}</p>
+    <table><tr><th>แผนก</th><th>รวม</th><th>เสร็จสิ้น</th><th>ค้างดำเนินการ</th></tr>${rows}</table>
+    <script>window.onload=function(){window.print();window.close();}<\/script></body></html>`;
+    const w = window.open("","_blank");
+    w.document.write(html); w.document.close();
+    showToast("เปิดหน้าต่างพิมพ์ PDF สำเร็จ", "success");
+}
+
+// ========================================================
+// HISTORY MODAL
+// ========================================================
+function openHistory(id, title) {
+    const token = getToken(); if (!token) return;
+    document.getElementById("historyOverlay").classList.add("active");
+    document.getElementById("historyModal").classList.add("active");
+    document.getElementById("historyTitle").innerText = `ประวัติ: [${id}] ${title}`;
+    document.getElementById("historyTimeline").innerHTML = `<div style="text-align:center;padding:20px;">กำลังโหลด...</div>`;
+    fetchSafePOST({ action: "getHistory", fileId: id, token })
+        .then(data => {
+            let html = "";
+            data.forEach(h => {
+                const imgLink = h.imgUrl ? `<br><a href="${h.imgUrl}" target="_blank" style="font-size:11px;color:#2563eb;"><i class="fa-solid fa-image"></i> เปิดดูภาพแนบ</a>` : "";
+                html += `<div class="timeline-item">
+                    <div class="timeline-time">${escapeHtml(h.time)} • ${escapeHtml(h.loc)}</div>
+                    <div class="timeline-status">${escapeHtml(h.status)}</div>
+                    <div class="timeline-user"><i class="fa-solid fa-user-check"></i> ${escapeHtml(h.user)}</div>
+                    ${imgLink}</div>`;
+            });
+            document.getElementById("historyTimeline").innerHTML = html || "<div style='text-align:center;'>ยังไม่มีประวัติ</div>";
+        })
+        .catch(() => { document.getElementById("historyTimeline").innerHTML = "<div style='color:red;text-align:center;'>ดึงข้อมูลล้มเหลว</div>"; });
+}
+function closeHistory() {
+    document.getElementById("historyOverlay").classList.remove("active");
+    document.getElementById("historyModal").classList.remove("active");
+}
+
+// ========================================================
+// PHOTO UPLOAD + PREVIEW
+// ========================================================
+function togglePhotoUpload() {
+    const status = document.querySelector('input[name="scanStatus"]:checked').value;
+    document.getElementById("photoUploadSection").style.display = status === "ส่งกลับแก้ไข" ? "block" : "none";
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const imgInput = document.getElementById("correctionImage");
+    if (imgInput) {
+        imgInput.addEventListener("change", function(e) {
+            if (e.target.files[0]) {
+                const url = URL.createObjectURL(e.target.files[0]);
+                document.getElementById("imgPreviewImg").src = url;
+                document.getElementById("imgPreview").style.display = "block";
+            }
+        });
+    }
+});
+
+// ========================================================
+// SCAN & ASSIGN
+// ========================================================
+async function runScan(text) {
+    const scanStatus = document.querySelector('input[name="scanStatus"]:checked').value;
+    const imgInput = document.getElementById("correctionImage");
+    let payload = { action: "scan", fileId: text, scanStatus, loc: document.getElementById("locScan").value, token: getToken() };
+    if (scanStatus === "ส่งกลับแก้ไข" && imgInput.files.length > 0) {
+        try {
+            const { base64, mime } = await resizeImageToBase64(imgInput.files[0]);
+            payload.imageBase64 = base64; payload.imageMime = mime;
+        } catch(e) { showToast("ไม่สามารถโหลดรูปภาพได้", "warn"); }
+    }
+    fetchSafePOST(payload)
+        .then(d => { showToast(d.message, d.status === "success" ? "success" : "error"); loadDash(); })
+        .catch(e => showToast(e.message, "error"));
+}
+
+function manualScan() {
+    const v = document.getElementById("manualIdScan").value.trim().toUpperCase();
+    if (v) runScan(v); else showToast("กรุณาระบุเลขแฟ้ม", "warn");
+}
+
+function manualAssign() {
+    const v = document.getElementById("manualIdAssign").value.trim().toUpperCase();
+    const t = document.getElementById("newDocTitle").value.trim();
+    const o = document.getElementById("ownerAssign").value.trim() || "ไม่ระบุ";
+    if (!v || !t) return showToast("กรุณาระบุเลขรหัสแฟ้ม และชื่อเรื่อง", "warn");
+    fetchSafePOST({ action: "assign", fileId: v, title: t, urgency: document.getElementById("urgencyAssign").value, loc: document.getElementById("locAssign").value, owner: o, token: getToken() })
+        .then(d => {
+            showToast(d.message, d.status === "success" ? "success" : "error");
+            loadDash();
+            document.getElementById("manualIdAssign").value = "";
+            document.getElementById("newDocTitle").value = "";
+            document.getElementById("ownerAssign").value = "";
+        }).catch(e => showToast(e.message, "error"));
+}
+
+function runAssign(text) {
+    const t = document.getElementById("newDocTitle").value.trim();
+    const o = document.getElementById("ownerAssign").value.trim() || "ไม่ระบุ";
+    if (!t) return showToast("กรุณาพิมพ์ชื่อเรื่องก่อนสแกนกล้อง", "warn");
+    fetchSafePOST({ action: "assign", fileId: text, title: t, urgency: document.getElementById("urgencyAssign").value, loc: document.getElementById("locAssign").value, owner: o, token: getToken() })
+        .then(d => {
+            showToast(d.message, "success");
+            loadDash();
+            document.getElementById("newDocTitle").value = "";
+            document.getElementById("ownerAssign").value = "";
+        }).catch(e => showToast(e.message, "error"));
+}
+
+document.getElementById("qr-assign").addEventListener("change", e => {
+    if (e.target.files[0]) { html5QrCodeDummy.scanFile(e.target.files[0], true).then(runAssign).catch(() => showToast("ไม่พบ QR Code", "error")); e.target.value = ""; }
+});
+document.getElementById("qr-scan").addEventListener("change", e => {
+    if (e.target.files[0]) { html5QrCodeDummy.scanFile(e.target.files[0], true).then(runScan).catch(() => showToast("ไม่พบ QR Code", "error")); e.target.value = ""; }
+});
+
+// ========================================================
+// SEARCH (Debounced)
+// ========================================================
+let sTimeout;
+function debounceSearch() {
+    const token = getToken(); if (!token) return;
+    clearTimeout(sTimeout);
+    const k = document.getElementById("searchInput").value.trim();
+    if (!k) { document.getElementById("miniDashboard").style.display = "block"; document.getElementById("searchResults").innerHTML = ""; return; }
+    document.getElementById("miniDashboard").style.display = "none";
+    sTimeout = setTimeout(() => {
+        fetchSafePOST({ action: "search", keyword: k, token })
+            .then(res => {
+                let html = "";
+                if (!res || res.length === 0) html = "<div style='text-align:center;color:#ef4444;padding:20px;font-weight:bold;'>❌ ไม่พบข้อมูลแฟ้ม</div>";
+                else res.forEach(f => html += `<div class="accordion-item" style="padding:12px;">${buildFileHTML(f)}</div>`);
+                document.getElementById("searchResults").innerHTML = html;
+            }).catch(() => {});
+    }, 400);
+}
+
+// ========================================================
+// ADMIN FUNCTIONS
+// ========================================================
+function importCSV() {
+    const file = document.getElementById("csvFileInput").files[0];
+    if (!file) return showToast("กรุณาเลือกไฟล์ CSV", "warn");
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const lines = e.target.result.split("\n");
+        let users = [];
+        // Schema: name, dept, role (3 columns — ตรงกับ GAS v2)
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(",");
+            if (cols.length >= 3 && cols[0].trim() !== "") {
+                users.push({ name: cols[0].trim(), dept: cols[1].trim(), role: cols[2].trim() });
+            }
+        }
+        if (users.length === 0) return showToast("ไม่พบข้อมูล หรือรูปแบบไม่ถูกต้อง", "error");
+        if (confirm(`เตรียมนำเข้า ${users.length} รายชื่อ ยืนยันหรือไม่?`)) {
+            fetchSafePOST({ action: "admin_import_users", users, token: getToken() })
+                .then(d => { showToast(d.message, "success"); loadAdminUsers(); })
+                .catch(e => showToast(e.message, "error"));
+        }
+    };
+    reader.readAsText(file, "UTF-8");
+}
+
+function loadAdminUsers() {
+    fetchSafePOST({ action: "admin_get_users", token: getToken() })
+        .then(data => {
+            const myName = (localStorage.getItem("bpp_user") || "").replace(/\s+/g,"").trim();
+            let html = `<table style="width:100%;border-collapse:collapse;"><tr style="background:var(--bg);"><th style="padding:5px;text-align:left;">ผู้ใช้งาน</th><th>สถานะ/สิทธิ์</th></tr>`;
+            data.forEach(u => {
+                const uName = (u.name || "").replace(/\s+/g,"").trim();
+                const isSelf = u.role === "Admin" && uName === myName;
+                let roleDropdown = isSelf
+                    ? `<b><i class="fa-solid fa-crown" style="color:gold;"></i> Root Admin</b>`
+                    : `<select onchange="updateRole('${u.name.replace(/'/g,"\\'")}',this.value)" style="font-size:11px;padding:4px;border-radius:4px;border:1px solid var(--border);outline:none;background:${u.role==="รออนุมัติ"?"#fee2e2":"#f0fdf4"};color:${u.role==="รออนุมัติ"?"#991b1b":"#166534"};font-weight:bold;">
+                        <option value="รออนุมัติ" ${u.role==="รออนุมัติ"?"selected":""}>รออนุมัติ (ล็อกอินไม่ได้)</option>
+                        <option value="ทั่วไป" ${u.role==="ทั่วไป"?"selected":""}>ทั่วไป (ดูได้เท่านั้น)</option>
+                        <option value="เจ้าของเรื่อง" ${u.role==="เจ้าของเรื่อง"?"selected":""}>เจ้าของเรื่อง</option>
+                        <option value="ธุรการ" ${u.role==="ธุรการ"?"selected":""}>ธุรการ</option>
+                        <option value="หน้าห้อง" ${u.role==="หน้าห้อง"?"selected":""}>หน้าห้อง</option>
+                        <option value="Admin" ${u.role==="Admin"?"selected":""}>Admin</option>
+                    </select>`;
+                const delBtn = isSelf ? "" : `<button onclick="deleteUser('${u.name.replace(/'/g,"\\'")}','${u.dept.replace(/'/g,"\\'")}','${u.role}')" style="background:#dc2626;color:white;border:none;border-radius:4px;padding:4px 8px;margin-left:5px;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>`;
+                html += `<tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:5px;font-size:12px;font-weight:600;color:var(--navy);">${escapeHtml(u.name)}<br><span style="color:var(--text-light);font-weight:normal;font-size:10px;">${escapeHtml(u.dept)}</span></td>
+                    <td style="text-align:right;">${roleDropdown}${delBtn}</td></tr>`;
+            });
+            document.getElementById("adminUserList").innerHTML = html + "</table>";
+        }).catch(e => showToast(e.message, "error"));
+}
+
+function updateRole(name, newRole) {
+    if (!confirm(`ต้องการเปลี่ยนสิทธิ์ของ [ ${name} ] เป็น [ ${newRole} ]?`)) return loadAdminUsers();
+    fetchSafePOST({ action: "admin_update_role", targetName: name, newRole, token: getToken() })
+        .then(d => { showToast(d.message, "success"); loadAdminUsers(); })
+        .catch(e => showToast(e.message, "error"));
+}
+
+function deleteUser(name, dept, role) {
+    if (!confirm(`ลบ ${name} (${dept}) ออกจากระบบถาวร?`)) return;
+    fetchSafePOST({ action: "admin_delete_user", targetName: name, token: getToken() })
+        .then(d => { showToast(d.message, "success"); loadAdminUsers(); })
+        .catch(e => showToast(e.message, "error"));
+}
+
+function archiveSystem() {
+    if (!confirm("จัดเก็บแฟ้มที่ 'เสร็จสิ้น' เข้าคลังถาวร?")) return;
+    fetchSafePOST({ action: "admin_archive", token: getToken() })
+        .then(d => { showToast(d.message, "success"); loadDash(); })
+        .catch(e => showToast(e.message, "error"));
+}
+
+function loadAdminLogs() {
+    fetchSafePOST({ action: "admin_get_syslogs", token: getToken() })
+        .then(data => {
+            let html = "";
+            data.forEach(l => {
+                html += `<div style="border-bottom:1px dashed var(--border);padding:4px 0;"><span style="color:var(--text-light);">${escapeHtml(l.time)}</span> <b style="color:var(--navy);">${escapeHtml(l.fileId)}</b> ➔ ${escapeHtml(l.status)} โดย ${escapeHtml(l.user)}</div>`;
+            });
+            document.getElementById("adminLogList").innerHTML = html || "ไม่มีประวัติการทำงาน";
+        }).catch(e => showToast(e.message, "error"));
+}
+
+function updateAnnouncement() {
+    const text = document.getElementById("announcementInput").value.trim();
+    if (!text) return showToast("กรุณาพิมพ์ข้อความที่ต้องการประกาศ", "warn");
+    fetchSafePOST({ action: "announce", text, token: getToken() })
+        .then(d => {
+            showToast(d.message, "success");
+            document.getElementById("marqueeText").innerHTML = `<i class="fa-solid fa-bullhorn"></i> ${escapeHtml(text)}`;
+            document.getElementById("announcementInput").value = "";
+        }).catch(e => showToast(e.message, "error"));
+}
+
+
+// ========================================================
+// SERVICE WORKER REGISTRATION (PWA)
+// ========================================================
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+}
+
+// ========================================================
+// PWA INSTALL PROMPT
+// ========================================================
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById("pwa-banner").style.display = "flex";
+});
+document.getElementById("pwa-install-btn").addEventListener("click", () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById("pwa-banner").style.display = "none"; });
+    }
+});
+
+// ========================================================
+// DEPT & LOCATION MANAGER
+// ========================================================
+
+// Default data — ใช้เมื่อ GAS ยังไม่มี action getConfig หรือ server ตอบว่าไม่มีข้อมูล
+const DEFAULT_DEPTS = [
+    "ศูนย์แอดมินส่วนกลาง","ไม่มีสังกัด (หน้าห้อง)",
+    "ธกส.ฝอ.ฯ","ขว.ฝอ.ฯ","ผงป.ฝอ.ฯ","กบ.ฝอ.ฯ",
+    "กร.ฝอ.ฯ","กง.ฝอ.ฯ","จอส.ฝอฯ","ร้อย สสน.ฝอ.ฯ"
+];
+const DEFAULT_LOCS = ["โต๊ะธุรการ","หน้าห้อง ผกก.","หน้าห้อง ผบก."];
+
+// State (โหลดจาก localStorage เป็น cache, sync กับ GAS เมื่อมีการเปลี่ยนแปลง)
+function getDeptState() {
+    try {
+        const raw = localStorage.getItem("bpp_depts");
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return DEFAULT_DEPTS.map((name,i) => ({ id: "d"+(i+1), name, archived: false, order: i }));
+}
+function getLocState() {
+    try {
+        const raw = localStorage.getItem("bpp_locs");
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return DEFAULT_LOCS.map((name,i) => ({ id: "l"+(i+1), name, archived: false, order: i }));
+}
+function saveDeptState(depts) {
+    localStorage.setItem("bpp_depts", JSON.stringify(depts));
+    populateAllDropdowns();
+}
+function saveLocState(locs) {
+    localStorage.setItem("bpp_locs", JSON.stringify(locs));
+    populateAllDropdowns();
+}
+
+// Persist to GAS (non-blocking — fire and forget, UI already updated)
+function persistConfig() {
+    const token = getToken(); if (!token) return;
+    fetchSafePOST({
+        action: "saveConfig",
+        token,
+        depts: getDeptState(),
+        locs:  getLocState()
+    }).catch(() => {}); // ไม่ block UI ถ้า GAS ช้า
+}
+
+// Load config จาก GAS เมื่อ login
+function loadRemoteConfig(token) {
+    fetchSafePOST({ action: "getFullConfig", token })
+        .then(d => {
+            if (d.depts && Array.isArray(d.depts) && d.depts.length > 0) {
+                localStorage.setItem("bpp_depts", JSON.stringify(d.depts));
+            }
+            if (d.locs && Array.isArray(d.locs) && d.locs.length > 0) {
+                localStorage.setItem("bpp_locs", JSON.stringify(d.locs));
+            }
+            populateAllDropdowns();
+        }).catch(() => { populateAllDropdowns(); }); // fallback to local cache
+}
+
+// ============================================================
+// POPULATE DROPDOWNS ทุกจุดในแอป
+// ============================================================
+function populateAllDropdowns() {
+    const depts = getDeptState().filter(d => !d.archived).sort((a,b) => a.order - b.order);
+    const locs  = getLocState().filter(l => !l.archived).sort((a,b) => a.order - b.order);
+
+    // regDept
+    const rd = document.getElementById("regDept");
+    if (rd) {
+        const prev = rd.value;
+        rd.innerHTML = '<option value="" disabled selected>-- เลือกสังกัด/แผนกงาน --</option>';
+        depts.forEach(d => {
+            const o = new Option(d.name, d.name);
+            rd.appendChild(o);
+        });
+        if (prev) rd.value = prev;
+    }
+
+    // ownerAssign datalist — no change needed (uses userList)
+
+    // locAssign
+    const la = document.getElementById("locAssign");
+    if (la) {
+        const prev = la.value;
+        la.innerHTML = "";
+        locs.forEach(l => la.appendChild(new Option("📍 "+l.name, l.name)));
+        if (prev && [...la.options].some(o => o.value === prev)) la.value = prev;
+    }
+
+    // locScan
+    const ls = document.getElementById("locScan");
+    if (ls) {
+        const prev = ls.value;
+        ls.innerHTML = "";
+        locs.forEach(l => ls.appendChild(new Option("📍 "+l.name, l.name)));
+        if (prev && [...ls.options].some(o => o.value === prev)) ls.value = prev;
+    }
+}
+
+// ============================================================
+// RENDER DEPT LIST (drag-and-drop)
+// ============================================================
+let dragSrcDept = null, dragSrcLoc = null;
+
+function renderDeptList() {
+    const depts = getDeptState().sort((a,b) => a.order - b.order);
+    const el = document.getElementById("deptList");
+    if (!el) return;
+    if (depts.length === 0) { el.innerHTML = '<div class="mgr-empty">ยังไม่มีแผนกงาน</div>'; return; }
+
+    el.innerHTML = depts.map((d,i) => `
+        <div class="mgr-item${d.archived?" archived":""}"
+             draggable="${!d.archived}"
+             data-id="${d.id}"
+             ondragstart="onDragStart(event,'dept')"
+             ondragover="onDragOver(event)"
+             ondrop="onDrop(event,'dept')"
+             ondragend="onDragEnd(event)">
+            <span class="mgr-drag" title="ลากเพื่อเรียง"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="mgr-order">${i+1}</span>
+            <span class="mgr-name" id="dname-${d.id}">${escapeHtml(d.name)}</span>
+            <input class="mgr-name-input" id="dinput-${d.id}" value="${escapeHtml(d.name)}" style="display:none;"
+                   onkeydown="if(event.key==='Enter')saveDeptName('${d.id}')">
+            <div class="mgr-actions">
+                ${d.archived
+                    ? `<button class="mgr-btn restore" onclick="restoreDept('${d.id}')"><i class="fa-solid fa-rotate-left"></i> คืนค่า</button>`
+                    : `<button class="mgr-btn edit" id="dedit-${d.id}" onclick="editDept('${d.id}')"><i class="fa-solid fa-pen"></i></button>
+                       <button class="mgr-btn del"  onclick="archiveDept('${d.id}')"><i class="fa-solid fa-trash"></i></button>`
+                }
+            </div>
+        </div>`).join("");
+}
+
+function renderLocList() {
+    const locs = getLocState().sort((a,b) => a.order - b.order);
+    const el = document.getElementById("locList");
+    if (!el) return;
+    if (locs.length === 0) { el.innerHTML = '<div class="mgr-empty">ยังไม่มีพิกัด</div>'; return; }
+
+    el.innerHTML = locs.map((l,i) => `
+        <div class="mgr-item${l.archived?" archived":""}"
+             draggable="${!l.archived}"
+             data-id="${l.id}"
+             ondragstart="onDragStart(event,'loc')"
+             ondragover="onDragOver(event)"
+             ondrop="onDrop(event,'loc')"
+             ondragend="onDragEnd(event)">
+            <span class="mgr-drag" title="ลากเพื่อเรียง"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="mgr-order">${i+1}</span>
+            <span class="mgr-name" id="lname-${l.id}">📍 ${escapeHtml(l.name)}</span>
+            <input class="mgr-name-input" id="linput-${l.id}" value="${escapeHtml(l.name)}" style="display:none;"
+                   onkeydown="if(event.key==='Enter')saveLocName('${l.id}')">
+            <div class="mgr-actions">
+                ${l.archived
+                    ? `<button class="mgr-btn restore" onclick="restoreLoc('${l.id}')"><i class="fa-solid fa-rotate-left"></i> คืนค่า</button>`
+                    : `<button class="mgr-btn edit" id="ledit-${l.id}" onclick="editLoc('${l.id}')"><i class="fa-solid fa-pen"></i></button>
+                       <button class="mgr-btn del" onclick="archiveLoc('${l.id}')"><i class="fa-solid fa-trash"></i></button>`
+                }
+            </div>
+        </div>`).join("");
+}
+
+// ============================================================
+// DEPT CRUD
+// ============================================================
+function addDept() {
+    const inp = document.getElementById("newDeptName");
+    const name = inp.value.trim();
+    if (!name) return showToast("กรุณาพิมพ์ชื่อแผนก", "warn");
+    const depts = getDeptState();
+    if (depts.some(d => d.name === name && !d.archived))
+        return showToast("มีแผนกชื่อนี้อยู่แล้ว", "warn");
+    const newId = "d" + Date.now();
+    depts.push({ id: newId, name, archived: false, order: depts.length });
+    saveDeptState(depts);
+    persistConfig();
+    inp.value = "";
+    renderDeptList();
+    showToast("เพิ่มแผนก \""+name+"\" สำเร็จ", "success");
+}
+
+function editDept(id) {
+    document.getElementById("dname-"+id).style.display = "none";
+    const inp = document.getElementById("dinput-"+id);
+    inp.style.display = "inline-block";
+    inp.focus(); inp.select();
+    document.getElementById("dedit-"+id).innerHTML = '<i class="fa-solid fa-check"></i>';
+    document.getElementById("dedit-"+id).className = "mgr-btn save";
+    document.getElementById("dedit-"+id).setAttribute("onclick", `saveDeptName('${id}')`);
+}
+
+function saveDeptName(id) {
+    const inp = document.getElementById("dinput-"+id);
+    const newName = inp.value.trim();
+    if (!newName) return showToast("ชื่อแผนกต้องไม่ว่าง", "warn");
+    const depts = getDeptState();
+    const idx = depts.findIndex(d => d.id === id);
+    if (idx < 0) return;
+    depts[idx].name = newName;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast("แก้ไขชื่อสำเร็จ", "success");
+}
+
+function archiveDept(id) {
+    const depts = getDeptState();
+    const d = depts.find(x => x.id === id);
+    if (!d) return;
+    if (!confirm(`ลบแผนก "${d.name}"?\n(แผนกจะถูกซ่อนแต่ยังเก็บข้อมูลไว้ สามารถคืนค่าได้)`)) return;
+    d.archived = true;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast(`ซ่อนแผนก "${d.name}" แล้ว`, "info");
+}
+
+function restoreDept(id) {
+    const depts = getDeptState();
+    const d = depts.find(x => x.id === id);
+    if (!d) return;
+    d.archived = false;
+    saveDeptState(depts);
+    persistConfig();
+    renderDeptList();
+    showToast(`คืนค่าแผนก "${d.name}" แล้ว`, "success");
+}
+
+// ============================================================
+// LOCATION CRUD
+// ============================================================
+function addLoc() {
+    const inp = document.getElementById("newLocName");
+    const name = inp.value.trim();
+    if (!name) return showToast("กรุณาพิมพ์ชื่อพิกัด", "warn");
+    const locs = getLocState();
+    if (locs.some(l => l.name === name && !l.archived))
+        return showToast("มีพิกัดชื่อนี้อยู่แล้ว", "warn");
+    const newId = "l" + Date.now();
+    locs.push({ id: newId, name, archived: false, order: locs.length });
+    saveLocState(locs);
+    persistConfig();
+    inp.value = "";
+    renderLocList();
+    showToast("เพิ่มพิกัด \""+name+"\" สำเร็จ", "success");
+}
+
+function editLoc(id) {
+    document.getElementById("lname-"+id).style.display = "none";
+    const inp = document.getElementById("linput-"+id);
+    inp.style.display = "inline-block";
+    inp.focus(); inp.select();
+    document.getElementById("ledit-"+id).innerHTML = '<i class="fa-solid fa-check"></i>';
+    document.getElementById("ledit-"+id).className = "mgr-btn save";
+    document.getElementById("ledit-"+id).setAttribute("onclick", `saveLocName('${id}')`);
+}
+
+function saveLocName(id) {
+    const inp = document.getElementById("linput-"+id);
+    const newName = inp.value.trim();
+    if (!newName) return showToast("ชื่อพิกัดต้องไม่ว่าง", "warn");
+    const locs = getLocState();
+    const idx = locs.findIndex(l => l.id === id);
+    if (idx < 0) return;
+    locs[idx].name = newName;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast("แก้ไขชื่อสำเร็จ", "success");
+}
+
+function archiveLoc(id) {
+    const locs = getLocState();
+    const l = locs.find(x => x.id === id);
+    if (!l) return;
+    if (!confirm(`ลบพิกัด "${l.name}"?`)) return;
+    l.archived = true;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast(`ซ่อนพิกัด "${l.name}" แล้ว`, "info");
+}
+
+function restoreLoc(id) {
+    const locs = getLocState();
+    const l = locs.find(x => x.id === id);
+    if (!l) return;
+    l.archived = false;
+    saveLocState(locs);
+    persistConfig();
+    renderLocList();
+    showToast(`คืนค่าพิกัด "${l.name}" แล้ว`, "success");
+}
+
+// ============================================================
+// DRAG AND DROP (HTML5 native)
+// ============================================================
+function onDragStart(e, type) {
+    if (type === "dept") dragSrcDept = e.currentTarget.getAttribute("data-id");
+    else                 dragSrcLoc  = e.currentTarget.getAttribute("data-id");
+    e.currentTarget.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", e.currentTarget.getAttribute("data-id"));
+}
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    e.currentTarget.classList.add("drag-over");
+}
+function onDragEnd(e) {
+    document.querySelectorAll(".mgr-item").forEach(el => {
+        el.classList.remove("dragging","drag-over");
+    });
+    dragSrcDept = null; dragSrcLoc = null;
+}
+function onDrop(e, type) {
+    e.preventDefault();
+    e.currentTarget.classList.remove("drag-over");
+    const targetId = e.currentTarget.getAttribute("data-id");
+    if (type === "dept") {
+        if (!dragSrcDept || dragSrcDept === targetId) return;
+        reorderItems(getDeptState, saveDeptState, renderDeptList, dragSrcDept, targetId);
+    } else {
+        if (!dragSrcLoc || dragSrcLoc === targetId) return;
+        reorderItems(getLocState, saveLocState, renderLocList, dragSrcLoc, targetId);
+    }
+    persistConfig();
+}
+
+function reorderItems(getState, saveState, renderFn, srcId, tgtId) {
+    const items = getState().sort((a,b) => a.order - b.order);
+    const srcIdx = items.findIndex(x => x.id === srcId);
+    const tgtIdx = items.findIndex(x => x.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+    const [moved] = items.splice(srcIdx, 1);
+    items.splice(tgtIdx, 0, moved);
+    items.forEach((x, i) => x.order = i);
+    saveState(items);
+    renderFn();
+    showToast("บันทึกลำดับแล้ว", "success");
+}
+
+
+</script>
 </body>
 </html>
