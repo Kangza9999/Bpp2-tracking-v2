@@ -521,10 +521,13 @@ function resizeImageToBase64(file, maxWidth=800, maxHeight=800, quality=0.75) {
 // ========================================================
 // AUTH
 // ========================================================
+// ✅ แทนที่ด้วย
 function toggleAuthForm() {
     const log = document.getElementById("loginCard"), reg = document.getElementById("registerCard");
-    log.style.display = log.style.display === "none" ? "block" : "none";
-    reg.style.display = reg.style.display === "none" ? "block" : "none";
+    const showingReg = reg.style.display === "none" || reg.style.display === "";
+    log.style.display = showingReg ? "none" : "block";
+    reg.style.display = showingReg ? "block" : "none";
+    if (showingReg) loadPublicConfig(); // ← เพิ่มบรรทัดนี้
 }
 
 function verifyUser() {
@@ -614,9 +617,11 @@ window.onload = function() {
         liveSync();
         setInterval(liveSync, 15000);
     } else {
-        document.getElementById("mainNav").style.display = "none";
-        document.getElementById("liveUserBar").style.display = "none";
-    }
+    document.getElementById("mainNav").style.display = "none";
+    document.getElementById("liveUserBar").style.display = "none";
+    // ← เพิ่มบรรทัดนี้:
+    populateAllDropdowns();
+}
 };
 
 // ========================================================
@@ -1125,7 +1130,30 @@ document.getElementById("pwa-install-btn").addEventListener("click", () => {
         deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById("pwa-banner").style.display = "none"; });
     }
 });
-
+// ========================================================
+// PUBLIC CONFIG — โหลด depts/locs ไม่ต้อง token (register form)
+// ========================================================
+function loadPublicConfig() {
+    const cached = localStorage.getItem("bpp_depts");
+    if (cached) {
+        try {
+            const depts = JSON.parse(cached);
+            if (Array.isArray(depts) && depts.length > 0) {
+                populateAllDropdowns();
+                return;
+            }
+        } catch(e) {}
+    }
+    fetchSafePOST({ action: "publicConfig" })
+        .then(d => {
+            if (d.depts && Array.isArray(d.depts) && d.depts.length > 0)
+                localStorage.setItem("bpp_depts", JSON.stringify(d.depts));
+            if (d.locs && Array.isArray(d.locs) && d.locs.length > 0)
+                localStorage.setItem("bpp_locs", JSON.stringify(d.locs));
+            populateAllDropdowns();
+        })
+        .catch(() => { populateAllDropdowns(); }); // fallback DEFAULT_DEPTS
+}
 // ========================================================
 // DEPT & LOCATION MANAGER
 // ========================================================
